@@ -42,7 +42,7 @@ try:
     elif platform.system() == 'Darwin':
         libsimx = ct.CDLL("./remoteApi.dylib")
     else:
-        libsimx = ct.CDLL("/home/clement/software/V-REP_PRO_EDU_V3_2_2_64_Linux/programming/remoteApiBindings/lib/lib/64Bit/remoteApi.so")
+        libsimx = ct.CDLL("./remoteApi.so")
 except:
     print ('----------------------------------------------------')
     print ('The remoteApi library could not be loaded. Make sure')
