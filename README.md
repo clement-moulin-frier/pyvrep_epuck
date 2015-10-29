@@ -2,6 +2,8 @@
 
 This page describes how to set up and run a practical session. We assume that your computer has been booted on the Linux Ubuntu operating system (available in the classroom). So if your are currently on Windows, you have to restart your machine to boot on Ubuntu instead.
 
+First, download the V-REP robot simulator [here](http://coppeliarobotics.com/V-REP_PRO_EDU_V3_2_2_64_Linux.tar.gz).
+
 Open a terminal and go to the `Document` directory:
 
     cd ~/Documents
