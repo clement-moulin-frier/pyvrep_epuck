@@ -1,4 +1,4 @@
-# Practical sessions on mobile robot control
+# Practical sessions on mobile robot behavior programming
 
 This page describes how to set up and run a practical session. We assume that your computer has been booted on the Linux Ubuntu operating system (available in the classroom). So if your are currently on Windows, you have to restart your machine to boot on Ubuntu instead.
 
