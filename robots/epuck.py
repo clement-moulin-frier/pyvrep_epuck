@@ -49,11 +49,15 @@ class Epuck(object):
     def stop(self):
         vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
 
-    def wait(self, sec):
+    def simulation_time(self):
         _, sim_time = vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_buffer)
-        while vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_buffer)[1] - sim_time < sec:
+        return sim_time
+
+    def wait(self, sec):
+        sim_time = self.simulation_time()
+        while self.simulation_time() - sim_time < sec:
             pass
-            sleep(0.01)
+            sleep(0.001)
         
     def left_vel(self, vel):
         vrep.simxSetJointTargetVelocity(self._clientID, self._left_joint, vel, vrep.simx_opmode_oneshot)
@@ -80,6 +84,15 @@ class Epuck(object):
                 distances.append(0)
         vrep.simxPauseCommunication(self._clientID, False)
         return array(distances)[self._prox_aliases[group]]
+
+    def is_min_distance(self, group, min_dist):
+        proxs = self.proximeters(group=group)
+        proxs = proxs[proxs != 0]
+        print proxs
+        if len(proxs):
+            return any(proxs < min_dist)
+        else:
+            return False
     
     def camera_image(self):
         _, resolution, image = vrep.simxGetVisionSensorImage(epuck._clientID, self._camera, options=0, operationMode=vrep.simx_opmode_buffer)
