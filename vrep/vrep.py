@@ -32,6 +32,7 @@ import sys
 import ctypes as ct
 from vrepConst import *
 
+
 #load library
 libsimx = None
 try:
@@ -42,7 +43,7 @@ try:
     elif platform.system() == 'Darwin':
         libsimx = ct.CDLL("./remoteApi.dylib")
     else:
-        libsimx = ct.CDLL("./remoteApi.so")
+        libsimx = ct.CDLL("../vrep/remoteApi.so")
 except:
     print ('----------------------------------------------------')
     print ('The remoteApi library could not be loaded. Make sure')
