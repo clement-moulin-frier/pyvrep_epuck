@@ -2,7 +2,9 @@ from vrep import vrep
 from math import sqrt
 from numpy import mean, array, argmax
 from time import sleep
-
+from threading import Event
+from threading import Thread as ParralelClass
+# from multiprocessing import Process as ParralelClass
 
 class Epuck(object):
     def __init__(self):
@@ -40,6 +42,14 @@ class Epuck(object):
         self.fwd_spd = 0.2
 
         vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_streaming)
+
+        self.freq = 100
+        self._behaviors = {}
+        self._runnings = {}
+        self._to_detach = {}
+
+        # self._running = threading.Event()
+        # self._running.set()
         
     def start(self):
         self.left_vel(0.)
@@ -88,7 +98,6 @@ class Epuck(object):
     def is_min_distance(self, group, min_dist):
         proxs = self.proximeters(group=group)
         proxs = proxs[proxs != 0]
-        print proxs
         if len(proxs):
             return any(proxs < min_dist)
         else:
@@ -103,3 +112,44 @@ class Epuck(object):
         _, resolution, image = vrep.simxGetVisionSensorImage(epuck._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_buffer)
         image.resize(resolution[0], resolution[1], 3)
         return image   
+
+    def attach_behavior(self, callback, freq=None):
+        if freq is None:
+            period = 1. / self.freq
+        else:
+            period = 1. / freq
+        self._runnings[callback.__name__] = Event()
+        self._to_detach[callback.__name__] = Event()
+        self._to_detach[callback.__name__].clear()
+        def loop(robot):
+            while True: 
+                if self._runnings[callback.__name__].is_set():
+                    callback(robot)
+                robot.wait(period)     
+                if self._to_detach[callback.__name__].is_set():
+                    break
+            self._to_detach[callback.__name__].clear()
+        self._behaviors[callback.__name__] = ParralelClass(target=loop, args=(self,))
+        self._runnings[callback.__name__].clear()
+        self._behaviors[callback.__name__].start()
+
+    def detach_behavior(self, callback_name):
+        if not callback_name in self._behaviors:
+            print("Warning: " + callback_name + " was not attached")
+        else:
+            self._to_detach[callback_name].set()
+            del self._behaviors[callback_name]
+
+    def start_behavior(self, callback_name):
+        if not callback_name in self._behaviors:
+            print("Warning: " + callback_name + " is not attached")
+        else:
+            self._runnings[callback_name].set()  
+            self._to_detach[callback_name].clear() 
+            
+
+    def stop_behavior(self, callback_name):
+        if not callback_name in self._behaviors:
+            print("Warning: " + callback_name + " is not attached")
+        else:
+            self._runnings[callback_name].clear()              
