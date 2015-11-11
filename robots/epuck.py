@@ -1,23 +1,26 @@
 from vrep import vrep
 from math import sqrt
-from numpy import mean, array, argmax
+from numpy import mean, array, argmax, argmin, ones
 from time import sleep
+from copy import copy
 from threading import Event, Condition
 from threading import Thread as ParralelClass
 # from multiprocessing import Process as ParralelClass
 
 class Epuck(object):
-    def __init__(self):
-        vrep.simxFinish(-1) # just in case, close all opened connections
-        self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP
-        _, self._left_joint = vrep.simxGetObjectHandle(self._clientID, 'ePuck_leftJoint', vrep.simx_opmode_oneshot_wait)
-        _, self._right_joint = vrep.simxGetObjectHandle(self._clientID, 'ePuck_rightJoint', vrep.simx_opmode_oneshot_wait)
-        _, self._light_sensor = vrep.simxGetObjectHandle(self._clientID, 'ePuck_lightSensor', vrep.simx_opmode_oneshot_wait)
-        _, self._camera = vrep.simxGetObjectHandle(self._clientID, 'ePuck_camera', vrep.simx_opmode_oneshot_wait)
+    def __init__(self, clientID, suffix=""):
+        # vrep.simxFinish(-1) # just in case, close all opened connections
+        # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP
+        self._clientID = clientID
+        self.suffix = suffix
+        _, self._left_joint = vrep.simxGetObjectHandle(self._clientID, 'ePuck_leftJoint' + suffix, vrep.simx_opmode_oneshot_wait)
+        _, self._right_joint = vrep.simxGetObjectHandle(self._clientID, 'ePuck_rightJoint' + suffix, vrep.simx_opmode_oneshot_wait)
+        _, self._light_sensor = vrep.simxGetObjectHandle(self._clientID, 'ePuck_lightSensor' + suffix, vrep.simx_opmode_oneshot_wait)
+        _, self._camera = vrep.simxGetObjectHandle(self._clientID, 'ePuck_camera' + suffix, vrep.simx_opmode_oneshot_wait)
         
         self._prox_handles = []
         for i in range(1,9):
-            _, p = vrep.simxGetObjectHandle(self._clientID, 'ePuck_proxSensor' + str(i), vrep.simx_opmode_oneshot_wait)
+            _, p = vrep.simxGetObjectHandle(self._clientID, 'ePuck_proxSensor' + str(i) + suffix, vrep.simx_opmode_oneshot_wait)
             self._prox_handles.append(p)
         
         # First calls with simx_opmode_streaming
@@ -26,7 +29,7 @@ class Epuck(object):
         _, self.camera_resolution, _ = vrep.simxGetVisionSensorImage(self._clientID, self._camera, options=0, operationMode=vrep.simx_opmode_streaming)
         _, self._light_sensor_resolution, _ = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_streaming)
         
-        self._body = vrep.simxGetObjectHandle(self._clientID, "ePuck_bodyElements", vrep.simx_opmode_oneshot_wait)
+        self._body = vrep.simxGetObjectHandle(self._clientID, "ePuck_bodyElements" + suffix, vrep.simx_opmode_oneshot_wait)
         self.wheel_diameter = 4.25 * 10 ** -2
         self.base_lenght = 7 * 10 ** -2
         
@@ -37,9 +40,12 @@ class Epuck(object):
                               "front-left" : [0, 1, 2],
                               "front-right": [3, 4, 5]}
         
-        self.avoid_fwd_spd = 0.1 
-        self.avoid_rot_spd = 1.
-        self.fwd_spd = 0.2
+        self.no_detection_value = 2000.
+
+        self._fwd_spd, self._rot_spd = 0., 0.
+        self._left_spd, self._right_spd =  0., 0.
+
+        self.fwd_spd, self.rot_spd = 0., 0.
 
         vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_streaming)
 
@@ -54,13 +60,13 @@ class Epuck(object):
         # self._running = threading.Event()
         # self._running.set()
         
-    def start(self):
-        self.left_vel(0.)
-        self.right_vel(0.)
-        vrep.simxStartSimulation(self._clientID, vrep.simx_opmode_oneshot_wait);
+    # def start(self):
+    #     self.left_vel = 0.
+    #     self.right_vel = 0.
+    #     vrep.simxStartSimulation(self._clientID, vrep.simx_opmode_oneshot_wait);
     
-    def stop(self):
-        vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
+    # def stop(self):
+    #     vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
 
     def simulation_time(self):
         _, sim_time = vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_buffer)
@@ -71,21 +77,70 @@ class Epuck(object):
         while self.simulation_time() - sim_time < sec:
             pass
             sleep(0.001)
-        
+    
+    @property
+    def left_spd(self):
+        return self._left_spd
+
+    @left_spd.setter
+    def left_spd(self, value):
+        vrep.simxSetJointTargetVelocity(self._clientID, self._left_joint, value, vrep.simx_opmode_oneshot)
+        self._left_spd = copy(value)
+        self._fwd_spd, self._rot_spd = self._lr_2_fwd_rot(self._left_spd, self._right_spd)
+    
+    @property
+    def right_spd(self):
+        return self._right_spd
+
+    @right_spd.setter
+    def right_spd(self, value):
+        vrep.simxSetJointTargetVelocity(self._clientID, self._right_joint, value, vrep.simx_opmode_oneshot)
+        self._right_spd = copy(value)
+        self._fwd_spd, self._rot_spd = self._lr_2_fwd_rot(self._left_spd, self._right_spd)
+
+
     def left_vel(self, vel):
-        vrep.simxSetJointTargetVelocity(self._clientID, self._left_joint, vel, vrep.simx_opmode_oneshot)
+        "Deprecated, only for backward compatibility. Use self.left_spd = value instead"
+        self.left_spd = vel
         
     def right_vel(self, vel):
-        vrep.simxSetJointTargetVelocity(self._clientID, self._right_joint, vel, vrep.simx_opmode_oneshot)
-    
+        "Deprecated, only for backward compatibility. Use self.right_spd = value instead"
+        self.right_spd = vel
+
+    def _lr_2_fwd_rot(self, left_spd, right_spd):
+        fwd = (self.wheel_diameter / 4.) * (left_spd + right_spd)
+        rot = 0.5 * (self.wheel_diameter / self.base_lenght) * (right_spd - left_spd)
+        return fwd, rot
+
+    def _fwd_rot_2_lr(self, fwd, rot):
+        left = ( (2.0 * fwd) - (rot * self.base_lenght) ) / (self.wheel_diameter)
+        right = ( (2.0 * fwd) + (rot * self.base_lenght) ) / (self.wheel_diameter)
+        return left, right
+
+    @property
+    def fwd_spd(self):
+        return self._fwd_spd
+
+    @fwd_spd.setter
+    def fwd_spd(self, value):
+        self.left_spd, self.right_spd = self._fwd_rot_2_lr(value, self._rot_spd)
+        self._fwd_spd, self._rot_speed = self._lr_2_fwd_rot(self.left_spd, self.right_spd) 
+
+    @property
+    def rot_spd(self):
+        return self._rot_spd
+
+    @rot_spd.setter
+    def rot_spd(self, value):
+        self.left_spd, self.right_spd = self._fwd_rot_2_lr(self._fwd_spd, value)
+        self._fwd_spd, self._rot_speed = self._lr_2_fwd_rot(self.left_spd, self.right_spd) 
+
     def move(self, forward, rotate=0.):
-        v_l = ( (2.0 * forward) - (rotate * self.base_lenght) ) / (self.wheel_diameter)
-        v_r = ( (2.0 * forward) + (rotate * self.base_lenght) ) / (self.wheel_diameter)
-        vrep.simxPauseCommunication(self._clientID, True)
-        self.left_vel(v_l)
-        self.right_vel(v_r)
-        vrep.simxPauseCommunication(self._clientID, False)
-    
+        self.fwd_spd, self.rot_spd = forward, rotate
+
+    def stop(self):
+        self.fwd_spd, self.rot_spd = 0., 0.
+
     def proximeters(self, group="all"):
         distances = []
         vrep.simxPauseCommunication(self._clientID, True)
@@ -94,13 +149,32 @@ class Epuck(object):
             if detectionState:
                 distances.append(1000 * sqrt(sum([x ** 2 for x in detectedPoint])))
             else:
-                distances.append(0)
+                distances.append(self.no_detection_value)
         vrep.simxPauseCommunication(self._clientID, False)
         return array(distances)[self._prox_aliases[group]]
 
+    def min_index(self, group="all"):
+        proxs = self.no_detection_value * ones(8)
+        proxs[self._prox_aliases[group]] = self.proximeters(group)
+        return argmin(proxs)
+
+    def dir_prox(self, group="all"):
+        proxs = self.no_detection_value * ones(8)
+        proxs[self._prox_aliases[group]] = self.proximeters(group)
+        idx = argmin(proxs)
+        return idx, proxs[idx]
+
+    def min_distance(self, group='all'):
+        proxs = self.proximeters(group=group)
+        proxs = proxs[proxs != self.no_detection_value]
+        if len(proxs):
+            return min(proxs)
+        else:
+            return self.no_detection_value
+
     def is_min_distance(self, group, min_dist):
         proxs = self.proximeters(group=group)
-        proxs = proxs[proxs != 0]
+        proxs = proxs[proxs != self.no_detection_value]
         if len(proxs):
             return any(proxs < min_dist)
         else:
@@ -127,7 +201,7 @@ class Epuck(object):
         if not callback_name in self._behaviors:
             print("Warning: " + callback_name + " was not attached")
         else:
-            self._to_detach[callback_name].set()
+            self._behaviors[callback_name].set()
             del self._behaviors[callback_name]
 
     def start_behavior(self, callback_name):
