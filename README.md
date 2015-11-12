@@ -32,6 +32,6 @@ Start the interactive environment we'll use in the practical sessions by typing:
 
     ipython notebook
 
-This will open a new page in your browser. Click on `practical_session_1`. This will open a document in a new tab in your browser entitled **First step with the simulator**.
+This will open a new page in your browser. Click on the practical session you want to open. This will open a document in a new tab in your browser.
 
 The rest of the session is described in this freshly opened document, please continue from there. 
