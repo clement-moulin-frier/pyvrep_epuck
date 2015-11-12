@@ -27,7 +27,7 @@ class Epuck(object):
         for i in range(8):
             vrep.simxReadProximitySensor(self._clientID, self._prox_handles[i], vrep.simx_opmode_streaming)
         _, self.camera_resolution, _ = vrep.simxGetVisionSensorImage(self._clientID, self._camera, options=0, operationMode=vrep.simx_opmode_streaming)
-        _, self._light_sensor_resolution, _ = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_streaming)
+        _, self.light_sensor_resolution, _ = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_streaming)
         
         self._body = vrep.simxGetObjectHandle(self._clientID, "ePuck_bodyElements" + suffix, vrep.simx_opmode_oneshot_wait)
         self.wheel_diameter = 4.25 * 10 ** -2
@@ -184,11 +184,18 @@ class Epuck(object):
         _, resolution, image = vrep.simxGetVisionSensorImage(epuck._clientID, self._camera, options=0, operationMode=vrep.simx_opmode_buffer)
         image.resize(resolution[0], resolution[1], 3)
         return image
-    
+
     def light_sensor_image(self):
-        _, resolution, image = vrep.simxGetVisionSensorImage(epuck._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_buffer)
+        _, resolution, image = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_buffer)
+        image = array(image)
         image.resize(resolution[0], resolution[1], 3)
         return image   
+
+    def floor_sensor(self):
+        tresh = 0.
+        _, _, image = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_buffer)
+        return image[0] > tresh, image[21] > tresh, image[93] > tresh
+
 
     def attach_behavior(self, behavior_callback, sensation_callback, freq=None):
         self._sensations[sensation_callback.__name__] = Sensation(self, sensation_callback, Condition(), freq)
