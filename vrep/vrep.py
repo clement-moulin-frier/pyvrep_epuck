@@ -39,7 +39,7 @@ try:
     if platform.system() =='cli':
         libsimx = ct.CDLL("./remoteApi.dll")
     elif platform.system() =='Windows':
-        libsimx = ct.CDLL("./remoteApi.dll") 
+        libsimx = ct.CDLL("../vrep/remoteApi.dll") 
     elif platform.system() == 'Darwin':
         libsimx = ct.CDLL("./remoteApi.dylib")
     else:
