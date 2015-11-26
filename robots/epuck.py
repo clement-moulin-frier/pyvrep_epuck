@@ -1,6 +1,7 @@
 from vrep import vrep
 from math import sqrt
 from numpy import mean, array, argmax, argmin, ones
+from random import sample
 from time import sleep
 from copy import copy
 from threading import Event, Condition
@@ -56,6 +57,13 @@ class Epuck(object):
 
         self._sensations = {}
         self._conditions = {}
+
+        self._registered_objects = {}
+
+        _, _, _ , _, _ = vrep.simxGetObjectGroupData(self._clientID, vrep.sim_object_shape_type, 0, vrep.simx_opmode_streaming)
+
+        sleep(0.5)
+        self.register_all_scene_objects()
 
         # self._running = threading.Event()
         # self._running.set()
@@ -141,17 +149,27 @@ class Epuck(object):
     def stop(self):
         self.fwd_spd, self.rot_spd = 0., 0.
 
-    def proximeters(self, group="all"):
+    def proximeters(self, group="all", mode="no_object_id"):
         distances = []
+        objects = []
         vrep.simxPauseCommunication(self._clientID, True)
         for i in range(8):
             res, detectionState, detectedPoint, detectedObjectHandle, detectedSurfaceNormalVector = vrep.simxReadProximitySensor(self._clientID, self._prox_handles[i], vrep.simx_opmode_buffer)
             if detectionState:
                 distances.append(1000 * sqrt(sum([x ** 2 for x in detectedPoint])))
+                if (detectedObjectHandle - 1) in self._registered_objects:
+                    objects.append(self._registered_objects[detectedObjectHandle - 1])
+                else:
+                    objects.append("None")
             else:
                 distances.append(self.no_detection_value)
+                objects.append("None")
         vrep.simxPauseCommunication(self._clientID, False)
-        return array(distances)[self._prox_aliases[group]]
+        if mode == "no_object_id":
+            return array(distances)[self._prox_aliases[group]]
+        else:
+            return array(distances)[self._prox_aliases[group]], array(objects)[self._prox_aliases[group]]
+
 
     def min_index(self, group="all"):
         proxs = self.no_detection_value * ones(8)
@@ -196,6 +214,39 @@ class Epuck(object):
         _, _, image = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_buffer)
         return image[0] > tresh, image[21] > tresh, image[93] > tresh
 
+    def register_object(self, name):
+        res, handle = vrep.simxGetObjectHandle(self._clientID, name, vrep.simx_opmode_oneshot_wait)
+        if res == vrep.simx_return_ok:
+            self._registered_objects[handle] = name
+        else:
+            print 'Object "' + name + '" does not exist in the current VREP scene'
+
+    def register_all_scene_objects(self):
+        res, handles, _ , _, names = vrep.simxGetObjectGroupData(self._clientID, vrep.sim_object_shape_type, 0, vrep.simx_opmode_streaming)
+        for h, n in zip(handles, names):
+            self._registered_objects[h] = n
+
+    def min_distance_to_object(self, name, group="all"):
+        dists = self.no_detection_value * ones(8)
+        objs = array(["None"] * 8, dtype='|S400')
+        dists[self._prox_aliases[group]], objs[self._prox_aliases[group]] = self.proximeters(group=group, mode="obj")
+        min_dist = 1e10;
+        for i, d, o in sample(zip(range(8), dists, objs), 8):
+            if o.startswith(name) and d < min_dist:
+                min_dist = copy(d)
+        if min_dist < 1e10:
+            return min_dist
+        else:
+            return self.no_detection_value
+
+    def detect_object(self, name, dist=2000, group="all"):
+        dists = self.no_detection_value * ones(8)
+        objs = array(["None"] * 8, dtype='|S400')
+        dists[self._prox_aliases[group]], objs[self._prox_aliases[group]] = self.proximeters(group=group, mode="obj")
+        for i, d, o in sample(zip(range(8), dists, objs), 8):
+            if o.startswith(name) and d < dist:
+                return True
+        return False
 
     def attach_behavior(self, behavior_callback, sensation_callback, freq=None):
         self._sensations[sensation_callback.__name__] = Sensation(self, sensation_callback, Condition(), freq)
