@@ -199,7 +199,8 @@ class Epuck(object):
             return False
     
     def camera_image(self):
-        _, resolution, image = vrep.simxGetVisionSensorImage(epuck._clientID, self._camera, options=0, operationMode=vrep.simx_opmode_buffer)
+        _, resolution, image = vrep.simxGetVisionSensorImage(self._clientID, self._camera, options=0, operationMode=vrep.simx_opmode_buffer)
+        image = array(image)
         image.resize(resolution[0], resolution[1], 3)
         return image
 
