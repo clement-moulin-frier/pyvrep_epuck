@@ -1,7 +1,7 @@
 from . import vrep
 from robots.epuck import Epuck
 from time import sleep
-from vrepConst import *
+from .vrepConst import simx_opmode_oneshot_wait
 
 
 class Simulator(object):
