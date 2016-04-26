@@ -20,5 +20,6 @@ class Simulator(object):
     def get_epuck(self, suffix=""):
         self.robots.append(Epuck(self._clientID, suffix))
         return self.robots[-1]
+
     def load_scene(self, file_name):
         vrep.simxLoadScene(self._clientID, file_name, 0, simx_opmode_oneshot_wait)
