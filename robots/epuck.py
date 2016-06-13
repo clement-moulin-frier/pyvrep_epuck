@@ -1,4 +1,5 @@
-from vrep import vrep
+from pypot.vrep.remoteApiBindings import vrep
+from pypot.vrep.io import VrepIOErrors
 from math import sqrt
 from numpy import mean, array, argmax, argmin, ones
 from random import sample
@@ -9,28 +10,31 @@ from threading import Thread as ParralelClass
 # from multiprocessing import Process as ParralelClass
 
 class Epuck(object):
-    def __init__(self, clientID, suffix=""):
+    def __init__(self, clientID, pypot_io, suffix=""):
         # vrep.simxFinish(-1) # just in case, close all opened connections
         # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP
         self._clientID = clientID
         self.suffix = suffix
-        _, self._left_joint = vrep.simxGetObjectHandle(self._clientID, 'ePuck_leftJoint' + suffix, vrep.simx_opmode_oneshot_wait)
-        _, self._right_joint = vrep.simxGetObjectHandle(self._clientID, 'ePuck_rightJoint' + suffix, vrep.simx_opmode_oneshot_wait)
-        _, self._light_sensor = vrep.simxGetObjectHandle(self._clientID, 'ePuck_lightSensor' + suffix, vrep.simx_opmode_oneshot_wait)
-        _, self._camera = vrep.simxGetObjectHandle(self._clientID, 'ePuck_camera' + suffix, vrep.simx_opmode_oneshot_wait)
+        self.io = pypot_io
+
+        self._left_joint = self.io.get_object_handle('ePuck_leftJoint' + suffix)
+        self._right_joint = self.io.get_object_handle('ePuck_rightJoint' + suffix)
+        self._light_sensor = self.io.get_object_handle('ePuck_lightSensor' + suffix)
+        self._camera = self.io.get_object_handle('ePuck_camera' + suffix)
         
         self._prox_handles = []
         for i in range(1,9):
-            _, p = vrep.simxGetObjectHandle(self._clientID, 'ePuck_proxSensor' + str(i) + suffix, vrep.simx_opmode_oneshot_wait)
+            p = self.io.get_object_handle('ePuck_proxSensor' + str(i) + suffix)
             self._prox_handles.append(p)
         
         # First calls with simx_opmode_streaming
         for i in range(8):
-            vrep.simxReadProximitySensor(self._clientID, self._prox_handles[i], vrep.simx_opmode_streaming)
-        _, self.camera_resolution, _ = vrep.simxGetVisionSensorImage(self._clientID, self._camera, options=0, operationMode=vrep.simx_opmode_streaming)
-        _, self.light_sensor_resolution, _ = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_streaming)
+            self.io.call_remote_api("simxReadProximitySensor", self._prox_handles[i], streaming=True)
         
-        self._body = vrep.simxGetObjectHandle(self._clientID, "ePuck_bodyElements" + suffix, vrep.simx_opmode_oneshot_wait)
+        self.camera_resolution, _ = self.io.call_remote_api("simxGetVisionSensorImage", self._camera, options=0, streaming=True)
+        self.light_sensor_resolution, _ = self.io.call_remote_api("simxGetVisionSensorImage", self._light_sensor, options=0, streaming=True)
+        
+        self._body = self.io.get_object_handle("ePuck_bodyElements" + suffix)
         self.wheel_diameter = 4.25 * 10 ** -2
         self.base_lenght = 7 * 10 ** -2
         
@@ -48,7 +52,7 @@ class Epuck(object):
 
         self.fwd_spd, self.rot_spd = 0., 0.
 
-        vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_streaming)
+        # vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_streaming)
 
         self.freq = 100
         self._behaviors = {}
@@ -60,7 +64,7 @@ class Epuck(object):
 
         self._registered_objects = {}
 
-        _, _, _ , _, _ = vrep.simxGetObjectGroupData(self._clientID, vrep.sim_object_shape_type, 0, vrep.simx_opmode_streaming)
+        _, _ , _, _ = self.io.call_remote_api("simxGetObjectGroupData", vrep.sim_object_shape_type, 0, streaming=True)
 
         sleep(0.5)
         self.register_all_scene_objects()
@@ -76,15 +80,15 @@ class Epuck(object):
     # def stop(self):
     #     vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
 
-    def simulation_time(self):
-        _, sim_time = vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_buffer)
-        return sim_time
+    # def simulation_time(self):
+    #     _, sim_time = vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_buffer)
+    #     return sim_time
 
-    def wait(self, sec):
-        sim_time = self.simulation_time()
-        while self.simulation_time() - sim_time < sec:
-            pass
-            sleep(0.001)
+    # def wait(self, sec):
+    #     sim_time = self.simulation_time()
+    #     while self.simulation_time() - sim_time < sec:
+    #         pass
+    #         sleep(0.001)
     
     @property
     def left_spd(self):
@@ -92,7 +96,7 @@ class Epuck(object):
 
     @left_spd.setter
     def left_spd(self, value):
-        vrep.simxSetJointTargetVelocity(self._clientID, self._left_joint, value, vrep.simx_opmode_oneshot)
+        self.io.call_remote_api("simxSetJointTargetVelocity", self._left_joint, value, sending=True)
         self._left_spd = copy(value)
         self._fwd_spd, self._rot_spd = self._lr_2_fwd_rot(self._left_spd, self._right_spd)
     
@@ -102,7 +106,7 @@ class Epuck(object):
 
     @right_spd.setter
     def right_spd(self, value):
-        vrep.simxSetJointTargetVelocity(self._clientID, self._right_joint, value, vrep.simx_opmode_oneshot)
+        self.io.call_remote_api("simxSetJointTargetVelocity", self._right_joint, value, sending=True)
         self._right_spd = copy(value)
         self._fwd_spd, self._rot_spd = self._lr_2_fwd_rot(self._left_spd, self._right_spd)
 
@@ -149,27 +153,34 @@ class Epuck(object):
     def stop(self):
         self.fwd_spd, self.rot_spd = 0., 0.
 
-    def proximeters(self, group="all", mode="no_object_id"):
+    def proximeters(self, group="all", tracked_objects = None, mode="no_object_id"):
         distances = []
         objects = []
-        vrep.simxPauseCommunication(self._clientID, True)
-        for i in range(8):
-            res, detectionState, detectedPoint, detectedObjectHandle, detectedSurfaceNormalVector = vrep.simxReadProximitySensor(self._clientID, self._prox_handles[i], vrep.simx_opmode_buffer)
-            if detectionState:
-                distances.append(1000 * sqrt(sum([x ** 2 for x in detectedPoint])))
-                if (detectedObjectHandle - 1) in self._registered_objects:
-                    objects.append(self._registered_objects[detectedObjectHandle - 1])
+        with self.io.pause_communication():
+            for i in range(8):
+                detectionState, detectedPoint, detectedObjectHandle, detectedSurfaceNormalVector = self.io.call_remote_api("simxReadProximitySensor", self._prox_handles[i], buffer=True)
+                # print detectedObjectHandle - 1
+                if detectionState:
+                    if (detectedObjectHandle - 1) in self._registered_objects:
+                        obj_name = self._registered_objects[detectedObjectHandle - 1]
+                        if tracked_objects is not None and not any([obj_name.startswith(o) for o in tracked_objects]):
+                            objects.append("None")
+                            distances.append(self.no_detection_value)
+                            continue
+                        objects.append(obj_name)
+                    else:
+                        objects.append("None")
+                    distances.append(1000 * sqrt(sum([x ** 2 for x in detectedPoint])))
                 else:
+                    distances.append(self.no_detection_value)
                     objects.append("None")
-            else:
-                distances.append(self.no_detection_value)
-                objects.append("None")
-        vrep.simxPauseCommunication(self._clientID, False)
         if mode == "no_object_id":
             return array(distances)[self._prox_aliases[group]]
         else:
             return array(distances)[self._prox_aliases[group]], array(objects)[self._prox_aliases[group]]
 
+    def position(self):
+        return self.io.get_object_position("ePuck" + self.suffix)
 
     def min_index(self, group="all"):
         proxs = self.no_detection_value * ones(8)
@@ -199,31 +210,36 @@ class Epuck(object):
             return False
     
     def camera_image(self):
-        _, resolution, image = vrep.simxGetVisionSensorImage(self._clientID, self._camera, options=0, operationMode=vrep.simx_opmode_buffer)
+        resolution, image = self.io.call_remote_api("simxGetVisionSensorImage", self._camera, options=0, buffer=True)
         image = array(image)
         image.resize(resolution[0], resolution[1], 3)
         return image
 
     def light_sensor_image(self):
-        _, resolution, image = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_buffer)
+        resolution, image = self.io.call_remote_api("simxGetVisionSensorImage", self._light_sensor, options=0, buffer=True)
         image = array(image)
         image.resize(resolution[0], resolution[1], 3)
         return image   
 
     def floor_sensor(self):
         tresh = 0.
-        _, _, image = vrep.simxGetVisionSensorImage(self._clientID, self._light_sensor, options=0, operationMode=vrep.simx_opmode_buffer)
+        _, image = self.io.call_remote_api("simxGetVisionSensorImage", self._light_sensor, options=0, buffer=True)
         return image[0] > tresh, image[21] > tresh, image[93] > tresh
 
     def register_object(self, name):
-        res, handle = vrep.simxGetObjectHandle(self._clientID, name, vrep.simx_opmode_oneshot_wait)
-        if res == vrep.simx_return_ok:
-            self._registered_objects[handle] = name
-        else:
-            print 'Object "' + name + '" does not exist in the current VREP scene'
+        passed = False
+        # need to wait that the object is actually reachable in VREP:
+        while not passed:
+            try:
+                handle = self.io.get_object_handle(name)
+                passed = True
+            except VrepIOErrors:
+                print "Not registered, retry ..."
+        self._registered_objects[handle] = name
+        
 
     def register_all_scene_objects(self):
-        res, handles, _ , _, names = vrep.simxGetObjectGroupData(self._clientID, vrep.sim_object_shape_type, 0, vrep.simx_opmode_streaming)
+        handles, _ , _, names = self.io.call_remote_api("simxGetObjectGroupData", vrep.sim_object_shape_type, 0, streaming=True)
         for h, n in zip(handles, names):
             self._registered_objects[h] = n
 
