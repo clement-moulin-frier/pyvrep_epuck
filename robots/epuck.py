@@ -10,10 +10,9 @@ from threading import Thread as ParralelClass
 # from multiprocessing import Process as ParralelClass
 
 class Epuck(object):
-    def __init__(self, clientID, pypot_io, suffix=""):
+    def __init__(self, pypot_io, suffix=""):
         # vrep.simxFinish(-1) # just in case, close all opened connections
         # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP
-        self._clientID = clientID
         self.suffix = suffix
         self.io = pypot_io
 
@@ -135,6 +134,7 @@ class Epuck(object):
 
     @fwd_spd.setter
     def fwd_spd(self, value):
+        #with self.io.pause_communication():
         self.left_spd, self.right_spd = self._fwd_rot_2_lr(value, self._rot_spd)
         self._fwd_spd, self._rot_speed = self._lr_2_fwd_rot(self.left_spd, self.right_spd) 
 
@@ -144,13 +144,16 @@ class Epuck(object):
 
     @rot_spd.setter
     def rot_spd(self, value):
+        # with self.io.pause_communication():
         self.left_spd, self.right_spd = self._fwd_rot_2_lr(self._fwd_spd, value)
         self._fwd_spd, self._rot_speed = self._lr_2_fwd_rot(self.left_spd, self.right_spd) 
 
     def move(self, forward, rotate=0.):
+        #with self.io.pause_communication():
         self.fwd_spd, self.rot_spd = forward, rotate
 
     def stop(self):
+        #with self.io.pause_communication():
         self.fwd_spd, self.rot_spd = 0., 0.
 
     def proximeters(self, group="all", tracked_objects = None, mode="no_object_id"):

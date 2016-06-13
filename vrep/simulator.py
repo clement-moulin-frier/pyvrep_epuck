@@ -13,9 +13,9 @@ from numpy import array
 from pypot.vrep.io import vrep_mode
 
 
-class Simulator(VrepIO):
+class Simulator(object):
     def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False):
-        VrepIO.__init__(self, vrep_host, vrep_port, scene, start)
+        self.io = VrepIO(vrep_host, vrep_port, scene, start)
         # vrep.simxFinish(-1) # just in case, close all opened connections
         # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP        
         self.robots = []
@@ -48,7 +48,7 @@ class Simulator(VrepIO):
     #     vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
 
     def get_epuck(self, suffix=""):
-        self.robots.append(Epuck(self.client_id, pypot_io=self, suffix=suffix))
+        self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + len(self.robots) + 1), suffix=suffix))
         return self.robots[-1]
 
     # def load_scene(self, file_name):
@@ -59,7 +59,7 @@ class Simulator(VrepIO):
     #     return obj_handle
 
     def remove_object(self, name):
-        vrep.simxRemoveObject(self.client_id, self.get_object_handle(name), vrep.simx_opmode_oneshot)
+        self.io.call_remote_api("simxRemoveObject", self.io.get_object_handle(name), sending=True)
 
     def _run(self, seconds):
         n_objects = 0
@@ -85,9 +85,9 @@ class Simulator(VrepIO):
             # print "2"
             if rand() < 0.02:
                 name = "Sphere_" + str(n_objects + 1)
-                self.add_sphere(name, [0.0, 0.0, 0.2], [0.1, 0.1, 0.1], 0.5)
+                self.io.add_sphere(name, [0.0, 0.0, 0.2], [0.1, 0.1, 0.1], 0.5)
                 self.object_names.append(name)
-                self._inject_lua_code("simSetObjectSpecialProperty({}, {})".format(self.get_object_handle(name), vrep.sim_objectspecialproperty_detectable_all))
+                self.io._inject_lua_code("simSetObjectSpecialProperty({}, {})".format(self.io.get_object_handle(name), vrep.sim_objectspecialproperty_detectable_all))
                 n_objects += 1
                 for robot in self.robots:
                     robot.register_object(name)
