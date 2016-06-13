@@ -32,6 +32,8 @@ import sys
 import ctypes as ct
 from vrepConst import *
 
+import os 
+_lib_path = os.path.dirname(os.path.realpath(__file__))
 
 #load library
 libsimx = None
@@ -43,7 +45,7 @@ try:
     elif platform.system() == 'Darwin':
         libsimx = ct.CDLL("./remoteApi.dylib")
     else:
-        libsimx = ct.CDLL("../vrep/remoteApi.so")
+        libsimx = ct.CDLL(_lib_path + "/remoteApi.so")
 except:
     print ('----------------------------------------------------')
     print ('The remoteApi library could not be loaded. Make sure')
