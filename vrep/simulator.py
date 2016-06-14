@@ -68,19 +68,19 @@ class Simulator(object):
             start_time = time()
             
             # print "1"
-            # objects_to_remove = []
-            # for robot in self.robots:
-            #     robot_pos = array(robot.position())
-            #     for obj in self.object_names:
-            #         try:
-            #             obj_pos = array(self.get_object_position(obj))
-            #         except VrepIOErrors:
-            #             break
-            #         if obj not in objects_to_remove and norm(robot_pos - obj_pos) < 0.1:
-            #             objects_to_remove.append(obj)
-            # for obj in objects_to_remove:
-            #     self.object_names.remove(obj)
-            #     self.remove_object(obj)
+            objects_to_remove = []
+            for robot in self.robots:
+                robot_pos = array(robot.position())
+                for obj in self.object_names:
+                    try:
+                        obj_pos = array(self.io.get_object_position(obj))
+                    except VrepIOErrors:
+                        break
+                    if obj not in objects_to_remove and norm(robot_pos - obj_pos) < 0.1:
+                        objects_to_remove.append(obj)
+            for obj in objects_to_remove:
+                self.object_names.remove(obj)
+                self.remove_object(obj)
                     
             # print "2"
             if rand() < 0.02:
