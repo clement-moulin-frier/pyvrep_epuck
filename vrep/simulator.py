@@ -14,7 +14,7 @@ from pypot.vrep.io import vrep_mode
 
 
 class Simulator(object):
-    def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False):
+    def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False, sphere_apparition_probability=0.01):
         self.io = VrepIO(vrep_host, vrep_port, scene, start)
         # vrep.simxFinish(-1) # just in case, close all opened connections
         # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP        
@@ -24,6 +24,8 @@ class Simulator(object):
 
         self.t = 0.
         self.dt = 10.
+
+        self.sphere_apparition_probability = sphere_apparition_probability
 
         self._running = threading.Event()
 
@@ -48,6 +50,7 @@ class Simulator(object):
     #     vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
 
     def get_epuck(self, suffix=""):
+        print self.io.vrep_port + len(self.robots) + 1
         self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + len(self.robots) + 1), suffix=suffix))
         return self.robots[-1]
 
@@ -83,9 +86,9 @@ class Simulator(object):
                 self.remove_object(obj)
                     
             # print "2"
-            if rand() < 0.02:
+            if rand() < self.sphere_apparition_probability:
                 name = "Sphere_" + str(n_objects + 1)
-                self.io.add_sphere(name, [0.0, 0.0, 0.2], [0.1, 0.1, 0.1], 0.5)
+                self.io.add_sphere(name, [-0.2, -0.2, 0.2], [0.1, 0.1, 0.1], 0.5)
                 self.object_names.append(name)
                 self.io._inject_lua_code("simSetObjectSpecialProperty({}, {})".format(self.io.get_object_handle(name), vrep.sim_objectspecialproperty_detectable_all))
                 n_objects += 1
