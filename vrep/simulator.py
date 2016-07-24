@@ -46,24 +46,19 @@ class Simulator(Observable):
         """ Stop the experiment. """
         self._running.clear()        
 
-    # def start(self):
-    #     vrep.simxStartSimulation(self._clientID, vrep.simx_opmode_oneshot_wait);
-    #     sleep(1)
+    def _vrep_epuck_suffix(self, num):
+        if num==0:
+            return ""
+        else:
+            return "#" + str(num - 1)
 
-    # def stop(self):
-    #     vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
-
-    def get_epuck(self, suffix="", verbose=False):
-        self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + len(self.robots) + 1), suffix=suffix))
+    def get_epuck(self, num, verbose=False):
+        self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + len(self.robots) + 1), suffix=self._vrep_epuck_suffix(num)))
         if verbose: print self.robots[-1]
         return self.robots[-1]
 
-    # def load_scene(self, file_name):
-    #     vrep.simxLoadScene(self._clientID, file_name, 0, simx_opmode_oneshot_wait)
-
-    # def get_object_handle(self, name):
-    #     _, obj_handle = vrep.simxGetObjectHandle(self._clientID, name, vrep.simx_opmode_oneshot_wait)
-    #     return obj_handle
+    def get_epuck_list(self, n_epucks, verbose=False):
+        return [self.get_epuck(i, verbose) for i in range(n_epucks)]
 
     def remove_object(self, name):
         self.io.call_remote_api("simxRemoveObject", self.io.get_object_handle(name), sending=True)
