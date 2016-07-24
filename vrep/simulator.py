@@ -12,9 +12,11 @@ from numpy import array
 
 from pypot.vrep.io import vrep_mode
 
+from .observer import Observable
 
-class Simulator(object):
-    def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False, sphere_apparition_probability=0.01):
+
+class Simulator(Observable):
+    def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False, sphere_apparition_period=5.):
         self.io = VrepIO(vrep_host, vrep_port, scene, start)
         # vrep.simxFinish(-1) # just in case, close all opened connections
         # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP        
@@ -23,11 +25,13 @@ class Simulator(object):
         self.vrep_mode = vrep_mode
 
         self.t = 0.
-        self.dt = 10.
+        self.dt = 100.
 
-        self.sphere_apparition_probability = sphere_apparition_probability
+        self.sphere_apparition_period = sphere_apparition_period
 
         self._running = threading.Event()
+
+        Observable.__init__(self)
 
     def run(self, seconds):
         self._running.set()
@@ -49,9 +53,9 @@ class Simulator(object):
     # def stop(self):
     #     vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
 
-    def get_epuck(self, suffix=""):
-        print self.io.vrep_port + len(self.robots) + 1
+    def get_epuck(self, suffix="", verbose=False):
         self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + len(self.robots) + 1), suffix=suffix))
+        if verbose: print self.robots[-1]
         return self.robots[-1]
 
     # def load_scene(self, file_name):
@@ -65,14 +69,17 @@ class Simulator(object):
         self.io.call_remote_api("simxRemoveObject", self.io.get_object_handle(name), sending=True)
 
     def _run(self, seconds):
+
+        self._running.set()
+        
         n_objects = 0
         self.object_names = []
+        last_sphere_t = self.io.get_simulation_current_time()
         while self.t < seconds * 1000.:
-            start_time = time()
+            start_time = self.io.get_simulation_current_time()
             
-            # print "1"
             objects_to_remove = []
-            for robot in self.robots:
+            for i_r, robot in enumerate(self.robots):
                 robot_pos = array(robot.position())
                 for obj in self.object_names:
                     try:
@@ -81,26 +88,27 @@ class Simulator(object):
                         break
                     if obj not in objects_to_remove and norm(robot_pos - obj_pos) < 0.1:
                         objects_to_remove.append(obj)
+                        self.emit((i_r, "eat"), True)
             for obj in objects_to_remove:
                 self.object_names.remove(obj)
                 self.remove_object(obj)
                     
-            # print "2"
-            if rand() < self.sphere_apparition_probability:
+            if start_time > last_sphere_t + self.sphere_apparition_period:
                 name = "Sphere_" + str(n_objects + 1)
-                self.io.add_sphere(name, [-0.2, -0.2, 0.2], [0.1, 0.1, 0.1], 0.5)
+                self.io.add_sphere(name, [-1., -1., 0.2], [0.1, 0.1, 0.1], 0.5)
                 self.object_names.append(name)
                 self.io._inject_lua_code("simSetObjectSpecialProperty({}, {})".format(self.io.get_object_handle(name), vrep.sim_objectspecialproperty_detectable_all))
                 n_objects += 1
                 for robot in self.robots:
                     robot.register_object(name)
+                last_sphere_t = start_time
                 
-            # print "3"
-            while time() < start_time + self.dt / 1000.:
+            while self.io.get_simulation_current_time() < start_time + self.dt / 1000.:
                 # print "wait"
                 sleep(self.dt/(100. * 1000))
             
-            self.t += self.dt
+            self.t += self.dt / 1000.
+
 
             if not self._running.is_set():
                 break
