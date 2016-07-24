@@ -68,26 +68,6 @@ class Epuck(object):
         sleep(0.5)
         self.register_all_scene_objects()
 
-        # self._running = threading.Event()
-        # self._running.set()
-        
-    # def start(self):
-    #     self.left_vel = 0.
-    #     self.right_vel = 0.
-    #     vrep.simxStartSimulation(self._clientID, vrep.simx_opmode_oneshot_wait);
-    
-    # def stop(self):
-    #     vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_oneshot_wait)
-
-    # def simulation_time(self):
-    #     _, sim_time = vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_buffer)
-    #     return sim_time
-
-    # def wait(self, sec):
-    #     sim_time = self.simulation_time()
-    #     while self.simulation_time() - sim_time < sec:
-    #         pass
-    #         sleep(0.001)
     
     @property
     def left_spd(self):
