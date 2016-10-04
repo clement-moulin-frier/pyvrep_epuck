@@ -1,16 +1,15 @@
-from pypot.vrep.io import VrepIO, VrepIOErrors
 from ..robots.epuck import Epuck
-from pypot.vrep.remoteApiBindings import vrep
-from pypot.vrep.remoteApiBindings.vrepConst import simx_opmode_oneshot_wait
 
-from random import  shuffle
-from time import time, sleep
+from pypot.vrep.io import VrepIO, VrepIOErrors
+from pypot.vrep.remoteApiBindings import vrep
+from pypot.vrep import close_all_connections
+from pypot.vrep.io import vrep_mode
+
+from time import sleep
 import threading
-from numpy.random import rand
+
 from numpy.linalg import norm
 from numpy import array
-
-from pypot.vrep.io import vrep_mode
 
 from .observer import Observable
 
@@ -19,7 +18,7 @@ class Simulator(Observable):
     def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False, sphere_apparition_period=5.):
         self.io = VrepIO(vrep_host, vrep_port, scene, start)
         # vrep.simxFinish(-1) # just in case, close all opened connections
-        # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP        
+        # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP
         self.robots = []
 
         self.vrep_mode = vrep_mode
@@ -29,13 +28,15 @@ class Simulator(Observable):
 
         self.sphere_apparition_period = sphere_apparition_period
 
+        self.n_robots = 0
+
         self._running = threading.Event()
 
         Observable.__init__(self)
 
     def run(self, seconds):
         self._running.set()
-        self._thread = threading.Thread(target=lambda: self._run(seconds)) 
+        self._thread = threading.Thread(target=lambda: self._run(seconds))
         self._thread.start()
 
     def wait(self):
@@ -44,21 +45,25 @@ class Simulator(Observable):
 
     def stop(self):
         """ Stop the experiment. """
-        self._running.clear()        
+        self._running.clear()
+
+    def close_connection(self):
+        close_all_connections()
 
     def _vrep_epuck_suffix(self, num):
-        if num==0:
+        if num == 0:
             return ""
         else:
             return "#" + str(num - 1)
 
-    def get_epuck(self, num, verbose=False):
-        self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + len(self.robots) + 1), suffix=self._vrep_epuck_suffix(num)))
+    def get_epuck(self, verbose=False):
+        self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + self.n_robots + 1), suffix=self._vrep_epuck_suffix(self.n_robots)))
+        self.n_robots += 1
         if verbose: print self.robots[-1]
         return self.robots[-1]
 
     def get_epuck_list(self, n_epucks, verbose=False):
-        return [self.get_epuck(i, verbose) for i in range(n_epucks)]
+        return [self.get_epuck(verbose) for _ in range(n_epucks)]
 
     def remove_object(self, name):
         self.io.call_remote_api("simxRemoveObject", self.io.get_object_handle(name), sending=True)
@@ -66,13 +71,13 @@ class Simulator(Observable):
     def _run(self, seconds):
 
         self._running.set()
-        
+
         n_objects = 0
         self.object_names = []
         last_sphere_t = self.io.get_simulation_current_time()
         while self.t < seconds * 1000.:
             start_time = self.io.get_simulation_current_time()
-            
+
             objects_to_remove = []
             for i_r, robot in enumerate(self.robots):
                 robot_pos = array(robot.position())
@@ -87,7 +92,7 @@ class Simulator(Observable):
             for obj in objects_to_remove:
                 self.object_names.remove(obj)
                 self.remove_object(obj)
-                    
+
             if start_time > last_sphere_t + self.sphere_apparition_period:
                 name = "Sphere_" + str(n_objects + 1)
                 self.io.add_sphere(name, [-1., -1., 0.2], [0.1, 0.1, 0.1], 0.5)
@@ -97,17 +102,14 @@ class Simulator(Observable):
                 for robot in self.robots:
                     robot.register_object(name)
                 last_sphere_t = start_time
-                
+
             while self.io.get_simulation_current_time() < start_time + self.dt / 1000.:
                 # print "wait"
-                sleep(self.dt/(100. * 1000))
-            
-            self.t += self.dt / 1000.
+                sleep(self.dt / (100. * 1000))
 
+            self.t += self.dt / 1000.
 
             if not self._running.is_set():
                 break
 
-        self._running.clear()            
-
-
+        self._running.clear()
