@@ -68,7 +68,9 @@ class Epuck(object):
         sleep(0.5)
         self.register_all_scene_objects()
 
-    
+        self.condition = Condition()
+
+
     @property
     def left_spd(self):
         return self._left_spd
@@ -248,18 +250,21 @@ class Epuck(object):
                 return True
         return False
 
-    def attach_behavior(self, behavior_callback, sensation_callback, freq=None):
-        self._sensations[sensation_callback.__name__] = Sensation(self, sensation_callback, Condition(), freq)
-        self._sensations[sensation_callback.__name__].start()        
-        self._behaviors[behavior_callback.__name__] = Behavior(self, self._sensations[sensation_callback.__name__], behavior_callback)
-        self._behaviors[behavior_callback.__name__].start()
-        return
+    def sleep(self, seconds):
+        start = self.io.get_simulation_current_time()
+        while self.io.get_simulation_current_time() - start < seconds:
+            sleep(0.005)
+
+    def attach_behavior(self, callback, freq=None):
+        self._behaviors[callback.__name__] = Behavior(self, callback, self.condition, freq)
+        self._behaviors[callback.__name__].start()
+        return self._behaviors[callback.__name__]
 
     def detach_behavior(self, callback_name):
-        if not callback_name in self._behaviors:
+        if callback_name not in self._behaviors:
             print("Warning: " + callback_name + " was not attached")
         else:
-            self._behaviors[callback_name].set()
+            self._behaviors[callback_name].stop()  # just in case
             del self._behaviors[callback_name]
 
     def start_behavior(self, callback_name):
@@ -267,7 +272,6 @@ class Epuck(object):
             print("Warning: " + callback_name + " is not attached")
         else:
             self._behaviors[callback_name]._running.set()  
-            self._behaviors[callback_name]._to_detach.clear() 
 
     def start_all_behaviors(self):
         for name, behavior in self._behaviors.iteritems():
@@ -279,7 +283,7 @@ class Epuck(object):
         if not callback_name in self._behaviors:
             print("Warning: " + callback_name + " is not attached")
         else:
-            self._behaviors[callback_name]._running.clear()              
+            self._behaviors[callback_name]._running.clear()
 
 
     def attach_sensation(self, callback, freq=None):
@@ -311,35 +315,20 @@ class Sensation(ParralelClass):
 
 class Behavior(ParralelClass):
 
-    def __init__(self, robot, sensation, callback):
-
+    def __init__(self, robot, callback, condition, freq):
         ParralelClass.__init__(self)
+        self.period = 1. / freq
         self.robot = robot
-        self.sensation = sensation
-        self.condition = sensation.condition
         self.callback = callback
+        self.condition = condition
         self._running = Event()
         self._running.clear()
-        self._to_detach = Event()
-        self._to_detach.clear()          
-    
-    def run(self):
 
+    def run(self):
         while True:
-            self.condition.acquire()
-            # print "acquired"
-            if self._to_detach.is_set():
-                self.condition.release()
-                break
-                # print "released for detach"
-                break
+            start_time = self.robot.io.get_simulation_current_time()
             if self._running.is_set():
-                if self.sensation is None:
-                    # print "behave from None"
-                    self.callback(self.robot)
-                else:
-                    # print "waiting for sensation"
-                    self.condition.wait()
-                    # print "Received sensation"
-                    self.callback(self.robot)
-            self.condition.release()                 
+                self.condition.acquire()
+                self.callback(self.robot)
+                self.condition.release()
+            self.robot.sleep(self.period + start_time - self.robot.io.get_simulation_current_time())
