@@ -193,7 +193,7 @@ class Epuck(object):
             return any(proxs < min_dist)
         else:
             return False
-    
+
     def camera_image(self):
         resolution, image = self.io.call_remote_api("simxGetVisionSensorImage", self._camera, options=0, buffer=True)
         image = array(image)
@@ -221,10 +221,9 @@ class Epuck(object):
             except VrepIOErrors:
                 print "Not registered, retry ..."
         self._registered_objects[handle] = name
-        
 
     def register_all_scene_objects(self):
-        handles, _ , _, names = self.io.call_remote_api("simxGetObjectGroupData", vrep.sim_object_shape_type, 0, streaming=True)
+        handles, _, _, names = self.io.call_remote_api("simxGetObjectGroupData", vrep.sim_object_shape_type, 0, streaming=True)
         for h, n in zip(handles, names):
             self._registered_objects[h] = n
 
@@ -250,7 +249,7 @@ class Epuck(object):
                 return True
         return False
 
-    def sleep(self, seconds):
+    def wait(self, seconds):
         start = self.io.get_simulation_current_time()
         while self.io.get_simulation_current_time() - start < seconds:
             sleep(0.005)
@@ -264,7 +263,7 @@ class Epuck(object):
         if callback_name not in self._behaviors:
             print("Warning: " + callback_name + " was not attached")
         else:
-            self._behaviors[callback_name].stop()  # just in case
+            self.stop_behavior(callback_name)  # just in case
             del self._behaviors[callback_name]
 
     def start_behavior(self, callback_name):
@@ -331,4 +330,4 @@ class Behavior(ParralelClass):
                 self.condition.acquire()
                 self.callback(self.robot)
                 self.condition.release()
-            self.robot.sleep(self.period + start_time - self.robot.io.get_simulation_current_time())
+            self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
