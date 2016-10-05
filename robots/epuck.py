@@ -10,44 +10,51 @@ from threading import Thread as ParralelClass
 # from multiprocessing import Process as ParralelClass
 
 class Epuck(object):
-    def __init__(self, pypot_io, suffix=""):
+    def __init__(self, pypot_io, use_proximeters=range(8), suffix=""):
         # vrep.simxFinish(-1) # just in case, close all opened connections
         # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP
         self.suffix = suffix
         self.io = pypot_io
+        self.used_proximeters = use_proximeters
 
         self._left_joint = self.io.get_object_handle('ePuck_leftJoint' + suffix)
         self._right_joint = self.io.get_object_handle('ePuck_rightJoint' + suffix)
         self._light_sensor = self.io.get_object_handle('ePuck_lightSensor' + suffix)
         self._camera = self.io.get_object_handle('ePuck_camera' + suffix)
-        
+
         self._prox_handles = []
-        for i in range(1,9):
-            p = self.io.get_object_handle('ePuck_proxSensor' + str(i) + suffix)
-            self._prox_handles.append(p)
-        
-        # First calls with simx_opmode_streaming
+        self._all_prox_handles = []
         for i in range(8):
-            self.io.call_remote_api("simxReadProximitySensor", self._prox_handles[i], streaming=True)
-        
+            p = self.io.get_object_handle('ePuck_proxSensor' + str(i + 1) + suffix)
+            self._all_prox_handles .append(p)
+            if i in use_proximeters:
+                self._prox_handles.append(p)
+            else:
+                # hide proximeter ray
+                self.hide_ray(i)
+
+        # First calls with simx_opmode_streaming
+        for h in self._prox_handles:
+            self.io.call_remote_api("simxReadProximitySensor", h, streaming=True)
+
         self.camera_resolution, _ = self.io.call_remote_api("simxGetVisionSensorImage", self._camera, options=0, streaming=True)
         self.light_sensor_resolution, _ = self.io.call_remote_api("simxGetVisionSensorImage", self._light_sensor, options=0, streaming=True)
-        
+
         self._body = self.io.get_object_handle("ePuck_bodyElements" + suffix)
         self.wheel_diameter = 4.25 * 10 ** -2
         self.base_lenght = 7 * 10 ** -2
-        
+
         self._prox_aliases = {"all" : range(8),
                               "all-but-rear" : range(6),
                               "front" : [2, 3],
                               "rear" : [6, 7],
                               "front-left" : [0, 1, 2],
                               "front-right": [3, 4, 5]}
-        
+
         self.no_detection_value = 2000.
 
         self._fwd_spd, self._rot_spd = 0., 0.
-        self._left_spd, self._right_spd =  0., 0.
+        self._left_spd, self._right_spd = 0., 0.
 
         self.fwd_spd, self.rot_spd = 0., 0.
 
@@ -70,6 +77,11 @@ class Epuck(object):
 
         self.condition = Condition()
 
+    def hide_ray(self, prox_id):
+        self.io.call_remote_api("simxSetObjectIntParameter", self._all_prox_handles[prox_id], 4000, 1, sending=True)
+
+    def display_ray(self, prox_id):
+        self.io.call_remote_api("simxSetObjectIntParameter", self._all_prox_handles[prox_id], 4000, 0, sending=True)
 
     @property
     def left_spd(self):
@@ -138,12 +150,12 @@ class Epuck(object):
         #with self.io.pause_communication():
         self.fwd_spd, self.rot_spd = 0., 0.
 
-    def proximeters(self, group="all", tracked_objects = None, mode="no_object_id"):
+    def proximeters(self, tracked_objects=None, mode="no_object_id"):
         distances = []
         objects = []
         with self.io.pause_communication():
-            for i in range(8):
-                detectionState, detectedPoint, detectedObjectHandle, detectedSurfaceNormalVector = self.io.call_remote_api("simxReadProximitySensor", self._prox_handles[i], buffer=True)
+            for i in self.used_proximeters:
+                detectionState, detectedPoint, detectedObjectHandle, detectedSurfaceNormalVector = self.io.call_remote_api("simxReadProximitySensor", self._all_prox_handles[i], buffer=True)
                 # print detectedObjectHandle - 1
                 if detectionState:
                     if (detectedObjectHandle - 1) in self._registered_objects:
@@ -159,21 +171,22 @@ class Epuck(object):
                 else:
                     distances.append(self.no_detection_value)
                     objects.append("None")
-        if mode == "no_object_id":
-            return array(distances)[self._prox_aliases[group]]
-        else:
-            return array(distances)[self._prox_aliases[group]], array(objects)[self._prox_aliases[group]]
+        # if mode == "no_object_id":
+        #     return array(distances)[self._prox_aliases[group]]
+        # else:
+        #     return array(distances)[self._prox_aliases[group]], array(objects)[self._prox_aliases[group]]
+        return array(distances)
 
     def position(self):
         return self.io.get_object_position("ePuck" + self.suffix)
 
     def min_index(self, group="all"):
-        proxs = self.no_detection_value * ones(8)
+        proxs = self.no_detection_value * ones(len(use_proximeters))
         proxs[self._prox_aliases[group]] = self.proximeters(group)
         return argmin(proxs)
 
     def dir_prox(self, group="all"):
-        proxs = self.no_detection_value * ones(8)
+        proxs = self.no_detection_value * ones(len(use_proximeters))
         proxs[self._prox_aliases[group]] = self.proximeters(group)
         idx = argmin(proxs)
         return idx, proxs[idx]
@@ -228,11 +241,11 @@ class Epuck(object):
             self._registered_objects[h] = n
 
     def min_distance_to_object(self, name, group="all"):
-        dists = self.no_detection_value * ones(8)
+        dists = self.no_detection_value * ones(len(use_proximeters))
         objs = array(["None"] * 8, dtype='|S400')
         dists[self._prox_aliases[group]], objs[self._prox_aliases[group]] = self.proximeters(group=group, mode="obj")
-        min_dist = 1e10;
-        for i, d, o in sample(zip(range(8), dists, objs), 8):
+        min_dist = 1e10
+        for i, d, o in sample(zip(range(len(use_proximeters)), dists, objs), len(use_proximeters)):
             if o.startswith(name) and d < min_dist:
                 min_dist = copy(d)
         if min_dist < 1e10:
@@ -241,10 +254,10 @@ class Epuck(object):
             return self.no_detection_value
 
     def detect_object(self, name, dist=2000, group="all"):
-        dists = self.no_detection_value * ones(8)
+        dists = self.no_detection_value * ones(len(use_proximeters))
         objs = array(["None"] * 8, dtype='|S400')
         dists[self._prox_aliases[group]], objs[self._prox_aliases[group]] = self.proximeters(group=group, mode="obj")
-        for i, d, o in sample(zip(range(8), dists, objs), 8):
+        for i, d, o in sample(zip(range(len(use_proximeters)), dists, objs), len(use_proximeters)):
             if o.startswith(name) and d < dist:
                 return True
         return False
@@ -257,32 +270,42 @@ class Epuck(object):
     def attach_behavior(self, callback, freq=None):
         self._behaviors[callback.__name__] = Behavior(self, callback, self.condition, freq)
         self._behaviors[callback.__name__].start()
-        return self._behaviors[callback.__name__]
+        # return self._behaviors[callback.__name__]
 
     def detach_behavior(self, callback_name):
         if callback_name not in self._behaviors:
             print("Warning: " + callback_name + " was not attached")
         else:
-            self.stop_behavior(callback_name)  # just in case
+            self._behaviors[callback_name].stop()  # just in case
             del self._behaviors[callback_name]
+
+    def detach_all_behaviors(self):
+        beh_copy = dict(self._behaviors)  # because one can't modify the dict during the loop on itself
+        for name, behavior in beh_copy.iteritems():
+            self.detach_behavior(name)
+            print "Behavior " + name + " detach"
 
     def start_behavior(self, callback_name):
         if not callback_name in self._behaviors:
             print("Warning: " + callback_name + " is not attached")
         else:
-            self._behaviors[callback_name]._running.set()  
+            self._behaviors[callback_name].execute()
 
     def start_all_behaviors(self):
         for name, behavior in self._behaviors.iteritems():
-            behavior._running.set()
+            self.start_behavior(name)
             print "Behavior " + name + " started"
-            
 
     def stop_behavior(self, callback_name):
         if not callback_name in self._behaviors:
             print("Warning: " + callback_name + " is not attached")
         else:
-            self._behaviors[callback_name]._running.clear()
+            self._behaviors[callback_name].stop()
+
+    def stop_all_behaviors(self):
+        for b_name in self._behaviors:
+            self.stop_behavior(b_name)
+
 
 
     def attach_sensation(self, callback, freq=None):
@@ -331,3 +354,9 @@ class Behavior(ParralelClass):
                 self.callback(self.robot)
                 self.condition.release()
             self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
+
+    def execute(self):
+        self._running.set()
+
+    def stop(self):
+        self._running.clear()
