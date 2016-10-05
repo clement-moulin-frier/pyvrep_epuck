@@ -6,7 +6,34 @@ First, open the file manager by clicking on the icon that looks like a yellow fo
 
 Then, download the V-REP robot simulator [here](http://coppeliarobotics.com/V-REP_PRO_EDU_V3_3_2_64_Linux.tar.gz). Save it in the directory we just created, which is `Documents/rti2016`.
 
-Once the download is done, go to the `Documents/rti2016` directory in the file manager. Extract the archive by right-clicking on it and choosing `Extreu aquì`.
+Once the download is done, go to the `Documents/rti2016` directory in the file manager. Extract the archive by right-clicking on it and choosing `Extreu aquì`. You can delete the archive file (the one ending by `.tar.gz`), we'll not use it. 
+
+We need to make a modification in this freshly extracted folder. Go in it and open the file called `remoteApiConnections.txt`. At the very end of it, copy and paste the following lines (but don't remove anything that was already present in the file):
+
+    // Additions to deal with multi-robot setup
+    portIndex2_port         = 19998
+    portIndex2_debug        = false
+    portIndex2_syncSimTrigger   = true
+    
+    portIndex3_port         = 19999
+    portIndex3_debug        = false
+    portIndex3_syncSimTrigger   = true
+    
+    portIndex4_port         = 20000
+    portIndex4_debug        = false
+    portIndex4_syncSimTrigger   = true
+    
+    portIndex5_port         = 20001
+    portIndex5_debug        = false
+    portIndex5_syncSimTrigger   = true
+    
+    portIndex6_port         = 20002
+    portIndex6_debug        = false
+    portIndex6_syncSimTrigger   = true
+    
+    portIndex7_port         = 20003
+    portIndex7_debug        = false
+    portIndex7_syncSimTrigger   = true
 
 Now open a terminal (the `>_` icon on the left pane of your desktop). Go to the directory you've just extracted by entering the following command (press `Enter` to execute it):
 
