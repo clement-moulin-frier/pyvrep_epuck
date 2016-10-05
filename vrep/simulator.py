@@ -14,6 +14,28 @@ from numpy import array
 from .observer import Observable
 
 
+def close():
+    close_all_connections()
+
+def get_session(n_epucks=1, use_proximeters=[2, 3], old_simulator=None, old_epuck=None):
+    if old_simulator is not None:
+        old_simulator.stop()
+        old_simulator.io.close()
+        del old_simulator
+    if old_epuck is not None:
+        old_epuck.stop()
+        old_epuck.io.close()
+        del old_epuck
+    close_all_connections()
+    simulator = Simulator()
+    simulator.io.restart_simulation()
+    epucks = [simulator.get_epuck(use_proximeters) for _ in range(n_epucks)]
+    if n_epucks == 1:
+        return simulator, epucks[0]
+    else:
+        return [simulator] + epucks
+
+
 class Simulator(Observable):
     def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False, sphere_apparition_period=5.):
         self.io = VrepIO(vrep_host, vrep_port, scene, start)
@@ -56,8 +78,8 @@ class Simulator(Observable):
         else:
             return "#" + str(num - 1)
 
-    def get_epuck(self, verbose=False):
-        self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + self.n_robots + 1), suffix=self._vrep_epuck_suffix(self.n_robots)))
+    def get_epuck(self, use_proximeters=range(8), verbose=False):
+        self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + self.n_robots + 1), use_proximeters=use_proximeters, suffix=self._vrep_epuck_suffix(self.n_robots)))
         self.n_robots += 1
         if verbose: print self.robots[-1]
         return self.robots[-1]
