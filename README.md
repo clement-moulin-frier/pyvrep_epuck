@@ -2,36 +2,46 @@
 
 This page describes how to set up and run a practical session. We assume that your computer has been booted on the Linux Ubuntu operating system (available in the classroom). So if your are currently on Windows, you have to restart your machine to boot on Ubuntu instead.
 
-First, download the V-REP robot simulator [here](http://coppeliarobotics.com/V-REP_PRO_EDU_V3_3_2_64_Linux.tar.gz). Save it in `Documents` (by default normally).
+First, open the file manager by clicking on the icon that looks like a yellow folder in the menu vertical bar on the left of the desktop. Go in `Documents` and create a new folder called `rti2016`. This is in this folder that we will copy all the material necessary for the practical sessions. 
 
-Once the download is done, go to the `Documents` directory (to open the file browser, click on the "folder"-like icon on the left pane of you desktop). Extract the archive by right-clicking on it and choosing `Extreu aquì`.
+Then, download the V-REP robot simulator [here](http://coppeliarobotics.com/V-REP_PRO_EDU_V3_3_2_64_Linux.tar.gz). Save it in the directory we just created, which is `Documents/rti2016`.
 
-Open a terminal (the `>_` icon on the left pane of your desktop). Go to the directory you've just extracted using:
+Once the download is done, go to the `Documents/rti2016` directory in the file manager. Extract the archive by right-clicking on it and choosing `Extreu aquì`.
 
-    cd Documents/V-REP_PRO_EDU_V3_3_2_64_Linux
+Now open a terminal (the `>_` icon on the left pane of your desktop). Go to the directory you've just extracted by entering the following command (press `Enter` to execute it:
 
-And run the simulator by typing:
+    cd Documents/rti2016/V-REP_PRO_EDU_V3_3_2_64_Linux
+
+And run the simulator by executing:
     
     ./vrep.sh
 
 At this point you should see the V-REP simulator graphical interface. Contact the teacher if it is not the case.
 
-Now let's download the material for the practical session. Open another terminal with a middle-click on the `>_` icon. Go to the `Document` directory:
+Now let's download the material for the practical session. Open another terminal with a middle-click on the `>_` icon. Go to the `rti2016` directory as before:
 
-    cd Documents
+    cd Documents/rti2016
 
 Then copy the material of the session on your machine by running:
 
-    git clone https://github.com/clement-moulin-frier/pyvrep-epuck.git
+    git clone https://github.com/clement-moulin-frier/pyvrep_epuck.git
 
-Go to the practical session directory by typing:
+We also need to install a few extra libraries. To do so, once the previous command has terminated, execute the following:
 
-    cd pyvrep-epuck/notebooks
+    git clone https://github.com/clement-moulin-frier/pypot.git
+
+as well as this one:
+
+    git clone https://github.com/certik/enum34.git
+
+Now we have everything we need. Go to the practical session directory by typing:
+
+    cd pyvrep_epuck/notebooks
 
 Start the interactive environment we'll use in the practical sessions by typing:
 
     ipython notebook
 
-This will open a new page in your browser. Click on the practical session you want to open (start with the 1st one of course). This will open a document in a new tab in your browser.
+This will open a new page in your browser. Click on the practical session you want to open (start with the 1st one of course, which is called `practical_session_3.v3.ipynb`). This will open a document in a new tab in your browser.
 
 The rest of the session is described in this freshly opened document, please continue from there. 
