@@ -69,6 +69,6 @@ Start the interactive environment we'll use in the practical sessions by typing:
 
     ipython notebook
 
-This will open a new page in your browser. Click on the practical session you want to open (start with the 1st one of course, which is called `practical_session_3.v3.ipynb`). This will open a document in a new tab in your browser.
+This will open a new page in your browser (usually the page appears in Firefox). Click on the practical session you want to open (start with the 1st one of course, which is called `practical_session_3.v3.ipynb`). This will open a document in a new tab in your browser.
 
 The rest of the session is described in this freshly opened document, please continue from there. 
