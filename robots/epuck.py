@@ -103,15 +103,6 @@ class Epuck(object):
         self._right_spd = copy(value)
         self._fwd_spd, self._rot_spd = self._lr_2_fwd_rot(self._left_spd, self._right_spd)
 
-
-    def left_vel(self, vel):
-        "Deprecated, only for backward compatibility. Use self.left_spd = value instead"
-        self.left_spd = vel
-        
-    def right_vel(self, vel):
-        "Deprecated, only for backward compatibility. Use self.right_spd = value instead"
-        self.right_spd = vel
-
     def _lr_2_fwd_rot(self, left_spd, right_spd):
         fwd = (self.wheel_diameter / 4.) * (left_spd + right_spd)
         rot = 0.5 * (self.wheel_diameter / self.base_lenght) * (right_spd - left_spd)
@@ -176,6 +167,9 @@ class Epuck(object):
         # else:
         #     return array(distances)[self._prox_aliases[group]], array(objects)[self._prox_aliases[group]]
         return array(distances)
+
+    def prox_activations(self, tracked_objects=None):
+        return (self.no_detection_value - self.proximeters(tracked_objects)) / self.no_detection_value
 
     def position(self):
         return self.io.get_object_position("ePuck" + self.suffix)
