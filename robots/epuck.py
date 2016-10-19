@@ -44,7 +44,7 @@ class Epuck(object):
         self.wheel_diameter = 4.25 * 10 ** -2
         self.base_lenght = 7 * 10 ** -2
 
-        self._prox_aliases = {"all" : range(8),
+        self._prox_aliases = {"all" : range(len(use_proximeters)),
                               "all-but-rear" : range(6),
                               "front" : [2, 3],
                               "rear" : [6, 7],
@@ -109,8 +109,8 @@ class Epuck(object):
         return fwd, rot
 
     def _fwd_rot_2_lr(self, fwd, rot):
-        left = ( (2.0 * fwd) - (rot * self.base_lenght) ) / (self.wheel_diameter)
-        right = ( (2.0 * fwd) + (rot * self.base_lenght) ) / (self.wheel_diameter)
+        left = ((2.0 * fwd) - (rot * self.base_lenght)) / (self.wheel_diameter)
+        right = ((2.0 * fwd) + (rot * self.base_lenght)) / (self.wheel_diameter)
         return left, right
 
     @property
@@ -169,18 +169,21 @@ class Epuck(object):
         return array(distances)
 
     def prox_activations(self, tracked_objects=None):
+        # if tracked_objects == "all":
+        #     t_o = None
+        # elif tracked_objects == "sphere"
         return (self.no_detection_value - self.proximeters(tracked_objects)) / self.no_detection_value
 
     def position(self):
         return self.io.get_object_position("ePuck" + self.suffix)
 
-    def min_index(self, group="all"):
-        proxs = self.no_detection_value * ones(len(use_proximeters))
-        proxs[self._prox_aliases[group]] = self.proximeters(group)
+    def min_index(self):
+        # proxs = self.no_detection_value * ones(len(self.used_proximeters))
+        proxs = self.proximeters()
         return argmin(proxs)
 
     def dir_prox(self, group="all"):
-        proxs = self.no_detection_value * ones(len(use_proximeters))
+        proxs = self.no_detection_value * ones(len(self.used_proximeters))
         proxs[self._prox_aliases[group]] = self.proximeters(group)
         idx = argmin(proxs)
         return idx, proxs[idx]
@@ -235,11 +238,11 @@ class Epuck(object):
             self._registered_objects[h] = n
 
     def min_distance_to_object(self, name, group="all"):
-        dists = self.no_detection_value * ones(len(use_proximeters))
+        dists = self.no_detection_value * ones(len(self.used_proximeters))
         objs = array(["None"] * 8, dtype='|S400')
         dists[self._prox_aliases[group]], objs[self._prox_aliases[group]] = self.proximeters(group=group, mode="obj")
         min_dist = 1e10
-        for i, d, o in sample(zip(range(len(use_proximeters)), dists, objs), len(use_proximeters)):
+        for i, d, o in sample(zip(range(len(self.used_proximeters)), dists, objs), len(self.used_proximeters)):
             if o.startswith(name) and d < min_dist:
                 min_dist = copy(d)
         if min_dist < 1e10:
@@ -248,10 +251,10 @@ class Epuck(object):
             return self.no_detection_value
 
     def detect_object(self, name, dist=2000, group="all"):
-        dists = self.no_detection_value * ones(len(use_proximeters))
+        dists = self.no_detection_value * ones(len(self.used_proximeters))
         objs = array(["None"] * 8, dtype='|S400')
         dists[self._prox_aliases[group]], objs[self._prox_aliases[group]] = self.proximeters(group=group, mode="obj")
-        for i, d, o in sample(zip(range(len(use_proximeters)), dists, objs), len(use_proximeters)):
+        for i, d, o in sample(zip(range(len(self.used_proximeters)), dists, objs), len(self.used_proximeters)):
             if o.startswith(name) and d < dist:
                 return True
         return False
@@ -262,43 +265,51 @@ class Epuck(object):
             sleep(0.005)
 
     def attach_behavior(self, callback, freq=None):
-        self._behaviors[callback.__name__] = Behavior(self, callback, self.condition, freq)
-        self._behaviors[callback.__name__].start()
+        self._behaviors[callback] = Behavior(self, callback, self.condition, freq)
+        self._behaviors[callback].start()
         # return self._behaviors[callback.__name__]
 
-    def detach_behavior(self, callback_name):
-        if callback_name not in self._behaviors:
-            print("Warning: " + callback_name + " was not attached")
+    def detach_behavior(self, callback):
+        if callback not in self._behaviors:
+            print("Warning: " + callback.__name__ + " was not attached")
         else:
-            self._behaviors[callback_name].stop()  # just in case
-            del self._behaviors[callback_name]
+            self._behaviors[callback].stop()  # just in case
+            self._behaviors[callback]._terminate()
+            sleep(self._behaviors[callback].period * 3)
+            del self._behaviors[callback]
 
     def detach_all_behaviors(self):
         beh_copy = dict(self._behaviors)  # because one can't modify the dict during the loop on itself
-        for name, behavior in beh_copy.iteritems():
-            self.detach_behavior(name)
-            print "Behavior " + name + " detach"
+        for callback, behavior in beh_copy.iteritems():
+            self.detach_behavior(callback)
+            print "Behavior " + callback.__name__ + " detached"
 
-    def start_behavior(self, callback_name):
-        if not callback_name in self._behaviors:
-            print("Warning: " + callback_name + " is not attached")
+    def start_behavior(self, callback):
+        if callback not in self._behaviors:
+            print("Warning: " + callback.__name__ + " is not attached")
         else:
-            self._behaviors[callback_name].execute()
+            self._behaviors[callback].execute()
 
     def start_all_behaviors(self):
-        for name, behavior in self._behaviors.iteritems():
-            self.start_behavior(name)
-            print "Behavior " + name + " started"
+        for callback, behavior in self._behaviors.iteritems():
+            self.start_behavior(callback)
+            print "Behavior " + callback.__name__ + " started"
 
-    def stop_behavior(self, callback_name):
-        if not callback_name in self._behaviors:
-            print("Warning: " + callback_name + " is not attached")
+    def stop_behavior(self, callback):
+        if callback not in self._behaviors:
+            print("Warning: " + callback.__name__ + " is not attached")
         else:
-            self._behaviors[callback_name].stop()
+            self._behaviors[callback].stop()
 
     def stop_all_behaviors(self):
         for b_name in self._behaviors:
             self.stop_behavior(b_name)
+
+    def check_behaviors(self):
+        if not len(self._behaviors):
+            print "No behavior attached"
+        for callback, beh in self._behaviors.iteritems():
+            print "Behavior \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if beh._running.is_set() else "NOT STARTED.")
 
 
 
@@ -314,12 +325,11 @@ class Sensation(ParralelClass):
         if freq is None:
             self.period = 1. / robot.freq
         else:
-            self.period = 1. / freq        
+            self.period = 1. / freq
         self.robot = robot
         self.callback = callback
         self.condition = condition
-      
-    
+
     def run(self):
         while True:
             self.condition.acquire()
@@ -339,13 +349,17 @@ class Behavior(ParralelClass):
         self.condition = condition
         self._running = Event()
         self._running.clear()
+        self._to_terminate = Event()
+        self._to_terminate.clear()
 
     def run(self):
         while True:
+            if self._to_terminate.is_set():
+                break
             start_time = self.robot.io.get_simulation_current_time()
             if self._running.is_set():
                 self.condition.acquire()
-                self.callback(self.robot)
+                self.robot.left_spd, self.robot.right_spd = self.callback(self.robot)
                 self.condition.release()
             self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
 
@@ -354,3 +368,6 @@ class Behavior(ParralelClass):
 
     def stop(self):
         self._running.clear()
+
+    def _terminate(self):
+        self._to_terminate.set()
