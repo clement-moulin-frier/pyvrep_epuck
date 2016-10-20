@@ -33,7 +33,6 @@ def get_session(n_epucks=1, use_proximeters=[2, 3], old_simulator=None, old_epuc
     sleep(0.1)
     simulator = Simulator()
     simulator.io.restart_simulation()
-    print use_proximeters
     epucks = [simulator.get_epuck(use_proximeters=use_proximeters) for _ in range(n_epucks)]
     if n_epucks == 1:
         return simulator, epucks[0]
