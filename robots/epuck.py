@@ -1,3 +1,5 @@
+from __future__ import division
+
 from pypot.vrep.remoteApiBindings import vrep
 from pypot.vrep.io import VrepIOErrors
 from math import sqrt
@@ -9,10 +11,9 @@ from threading import Event, Condition
 from threading import Thread as ParralelClass
 # from multiprocessing import Process as ParralelClass
 
+
 class Epuck(object):
     def __init__(self, pypot_io, use_proximeters=range(8), suffix=""):
-        # vrep.simxFinish(-1) # just in case, close all opened connections
-        # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP
         self.suffix = suffix
         self.io = pypot_io
         self.used_proximeters = use_proximeters
@@ -60,6 +61,8 @@ class Epuck(object):
 
         # vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_streaming)
 
+        self.max_speed = 20.
+
         self.freq = 100
         self._behaviors = {}
         self._runnings = {}
@@ -102,6 +105,26 @@ class Epuck(object):
         self.io.call_remote_api("simxSetJointTargetVelocity", self._right_joint, value, sending=True)
         self._right_spd = copy(value)
         self._fwd_spd, self._rot_spd = self._lr_2_fwd_rot(self._left_spd, self._right_spd)
+
+    @property
+    def left_wheel(self):
+        return self._left_spd / self.max_speed
+
+    @left_spd.setter
+    def left_wheel(self, value):
+        self.io.call_remote_api("simxSetJointTargetVelocity", self._left_joint, value * self.max_speed, sending=True)
+        self._left_spd = copy(value * self.max_speed)
+        self._fwd_spd, self._rot_spd = self._lr_2_fwd_rot(self._left_spd, self._right_spd)
+    
+    @property
+    def right_wheel(self):
+        return self._right_spd / self.max_speed
+
+    @right_spd.setter
+    def right_wheel(self, value):
+        self.io.call_remote_api("simxSetJointTargetVelocity", self._right_joint, value * self.max_speed, sending=True)
+        self._right_spd = copy(value * self.max_speed)
+        self._fwd_spd, self._rot_spd = self._lr_2_fwd_rot(self._left_spd, self._right_spd)        
 
     def _lr_2_fwd_rot(self, left_spd, right_spd):
         fwd = (self.wheel_diameter / 4.) * (left_spd + right_spd)
@@ -264,7 +287,7 @@ class Epuck(object):
         while self.io.get_simulation_current_time() - start < seconds:
             sleep(0.005)
 
-    def attach_behavior(self, callback, freq=None):
+    def attach_behavior(self, callback, freq):
         self._behaviors[callback] = Behavior(self, callback, self.condition, freq)
         self._behaviors[callback].start()
         # return self._behaviors[callback.__name__]
@@ -359,7 +382,7 @@ class Behavior(ParralelClass):
             start_time = self.robot.io.get_simulation_current_time()
             if self._running.is_set():
                 self.condition.acquire()
-                self.robot.left_spd, self.robot.right_spd = self.callback(self.robot)
+                self.robot.left_wheel, self.robot.right_wheel = self.callback(self.robot)
                 self.condition.release()
             self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
 
