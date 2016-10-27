@@ -3,8 +3,9 @@ from __future__ import division
 from pypot.vrep.remoteApiBindings import vrep
 from pypot.vrep.io import VrepIOErrors
 from math import sqrt
-from numpy import mean, array, argmax, argmin, ones
-from random import sample
+from numpy import average, mean, array, argmax, argmin, ones
+from numpy.random import rand, randint
+from random import sample, choice
 from time import sleep
 from copy import copy
 from threading import Event, Condition
@@ -13,10 +14,11 @@ from threading import Thread as ParralelClass
 
 
 class Epuck(object):
-    def __init__(self, pypot_io, use_proximeters=range(8), suffix=""):
+    def __init__(self, pypot_io, freq = 10., use_proximeters=range(8), suffix=""):
         self.suffix = suffix
         self.io = pypot_io
         self.used_proximeters = use_proximeters
+        self.freq = freq
 
         self._left_joint = self.io.get_object_handle('ePuck_leftJoint' + suffix)
         self._right_joint = self.io.get_object_handle('ePuck_rightJoint' + suffix)
@@ -79,6 +81,9 @@ class Epuck(object):
         self.register_all_scene_objects()
 
         self.condition = Condition()
+
+        self.behavior_mixer = BehaviorMixer(self)
+        self.behavior_mixer.start()
 
     def hide_ray(self, prox_id):
         self.io.call_remote_api("simxSetObjectIntParameter", self._all_prox_handles[prox_id], 4000, 1, sending=True)
@@ -164,6 +169,13 @@ class Epuck(object):
         #with self.io.pause_communication():
         self.fwd_spd, self.rot_spd = 0., 0.
 
+    def close(self):
+        self.detach_all_behaviors()
+        self.behavior_mixer._terminate()
+        sleep(self.behavior_mixer.period)
+        self.stop()
+        self.io.close()
+
     def proximeters(self, tracked_objects=None, mode="no_object_id"):
         distances = []
         objects = []
@@ -242,7 +254,7 @@ class Epuck(object):
     def floor_sensor(self):
         tresh = 0.
         _, image = self.io.call_remote_api("simxGetVisionSensorImage", self._light_sensor, options=0, buffer=True)
-        return image[0] > tresh, image[21] > tresh, image[93] > tresh
+        return float(image[0] > tresh), float(image[21] > tresh), float(image[93] > tresh)
 
     def register_object(self, name):
         passed = False
@@ -290,7 +302,6 @@ class Epuck(object):
     def attach_behavior(self, callback, freq):
         self._behaviors[callback] = Behavior(self, callback, self.condition, freq)
         self._behaviors[callback].start()
-        # return self._behaviors[callback.__name__]
 
     def detach_behavior(self, callback):
         if callback not in self._behaviors:
@@ -312,6 +323,8 @@ class Epuck(object):
             print("Warning: " + callback.__name__ + " is not attached")
         else:
             self._behaviors[callback].execute()
+            if not self.behavior_mixer.is_executed():
+                self.behavior_mixer.execute()
 
     def start_all_behaviors(self):
         for callback, behavior in self._behaviors.iteritems():
@@ -323,6 +336,8 @@ class Epuck(object):
             print("Warning: " + callback.__name__ + " is not attached")
         else:
             self._behaviors[callback].stop()
+            if all([not b.is_executed() for b in self._behaviors.itervalues()]):
+                self.behavior_mixer.stop()
 
     def stop_all_behaviors(self):
         for b_name in self._behaviors:
@@ -361,7 +376,6 @@ class Sensation(ParralelClass):
             self.condition.release()
             self.robot.wait(self.period)
 
-
 class Behavior(ParralelClass):
 
     def __init__(self, robot, callback, condition, freq):
@@ -374,6 +388,9 @@ class Behavior(ParralelClass):
         self._running.clear()
         self._to_terminate = Event()
         self._to_terminate.clear()
+        self.left_wheel = 0.
+        self.right_wheel = 0.
+        self.activation = 0.
 
     def run(self):
         while True:
@@ -382,15 +399,86 @@ class Behavior(ParralelClass):
             start_time = self.robot.io.get_simulation_current_time()
             if self._running.is_set():
                 self.condition.acquire()
-                self.robot.left_wheel, self.robot.right_wheel = self.callback(self.robot)
+                res = self.callback(self.robot)
+                if len(res) == 2:
+                    self.left_wheel, self.right_wheel = self.callback(self.robot)
+                    self.activation = 1.
+                else:
+                    self.left_wheel, self.right_wheel, self.activation = self.callback(self.robot)
                 self.condition.release()
             self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
 
     def execute(self):
         self._running.set()
 
+    def is_executed(self):
+        return self._running.is_set()
+
+    def stop(self):
+        self._running.clear()
+        sleep(self.period * 2)
+        self.activation, self.left_wheel, self.right_wheel = 0., 0., 0.
+
+    def _terminate(self):
+        self._to_terminate.set()
+
+
+class BehaviorMixer(ParralelClass):
+    def __init__(self, robot):
+        ParralelClass.__init__(self)
+        self.period = 1. / robot.freq
+        self.robot = robot
+        self.behaviors = robot._behaviors
+        self.condition = robot.condition
+        self._running = Event()
+        self._running.clear()
+        self._to_terminate = Event()
+        self._to_terminate.clear()
+        self.mode = "random"
+
+    def run(self):
+        while True:
+            if self._to_terminate.is_set():
+                break
+            start_time = self.robot.io.get_simulation_current_time()
+            if self._running.is_set():
+                self.condition.acquire()
+                if not self.behaviors:
+                    activations = 0., 0.
+                else:
+                    if self.mode == "random":
+                        activations = self._random()
+                    elif self.mode == "average":
+                        activations = self._average()
+                    else:
+                        print self.mode, "is not a valid mode. Choices are \"random\" or \"average\""
+                self.robot.left_wheel, self.robot.right_wheel = activations
+                self.condition.release()
+            self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
+
+    def _average(self):
+        activations = array([(b.left_wheel, b.right_wheel, b.activation) for b in self.behaviors.itervalues()])
+        activations = average(activations[:, :2], weights=activations[:, 2] + 1e-10, axis=0)
+        return activations
+
+    def _random(self):
+        beh = choice(list(self.behaviors.values()))
+        return beh.left_wheel, beh.right_wheel
+
+    def set_mode(self, mode):
+        self.condition.acquire()
+        self.mode = mode
+        self.condition.release()
+
+    def execute(self):
+        self._running.set()
+
+    def is_executed(self):
+        return self._running.is_set()
+
     def stop(self):
         self._running.clear()
 
     def _terminate(self):
+        self.stop()
         self._to_terminate.set()
