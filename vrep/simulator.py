@@ -1,3 +1,5 @@
+from __future__ import division
+
 from ..robots.epuck import Epuck
 
 from pypot.vrep.io import VrepIO, VrepIOErrors
@@ -10,7 +12,7 @@ import threading
 
 from numpy.linalg import norm
 from numpy import array
-
+from numpy.random import rand
 from .observer import Observable
 
 
@@ -39,9 +41,19 @@ def get_session(n_epucks=1, use_proximeters=[2, 3], old_simulator=None, old_epuc
     else:
         return [simulator] + epucks
 
+def close_session(simulator, *epucks):
+    simulator.close()
+    for e in epucks:
+        e.close()
+        del e
+    del simulator
+    sleep(0.1)
+    close_all_connections()
+
+
 
 class Simulator(Observable):
-    def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False, sphere_apparition_period=5.):
+    def __init__(self, vrep_host='127.0.0.1', vrep_port=19997, scene=None, start=False):
         self.io = VrepIO(vrep_host, vrep_port, scene, start)
         # vrep.simxFinish(-1) # just in case, close all opened connections
         # self._clientID = vrep.simxStart('127.0.0.1',19997, True, True, 5000, 5) # Connect to V-REP
@@ -52,29 +64,42 @@ class Simulator(Observable):
         self.t = 0.
         self.dt = 100.
 
-        self.sphere_apparition_period = sphere_apparition_period
+        self.sphere_apparition_period = 0
 
         self.n_robots = 0
 
+        self._thread = threading.Thread(target=lambda: self._run(0))
         self._running = threading.Event()
+        self._running.clear()
 
         Observable.__init__(self)
 
-    def run(self, seconds):
+    def run(self):
         self._running.set()
-        self._thread = threading.Thread(target=lambda: self._run(seconds))
         self._thread.start()
 
     def wait(self):
-        """ Wait for the end of the run of the experiment. """
         self._thread.join()
 
     def stop(self):
-        """ Stop the experiment. """
         self._running.clear()
 
-    def close_connection(self):
-        close_all_connections()
+    def close(self):
+        self.stop()
+        while self._thread.isAlive():
+            sleep(0.1)
+        self.io.stop_simulation()
+        self.io.close()
+
+    def start_sphere_apparition(self, period=5., min_pos=[-1., -1., .1], max_pos=[1., 1., 1.]):
+        self.sphere_min_pos = array(min_pos)
+        self.sphere_max_pos = array(max_pos)
+        self.sphere_apparition_period = period
+        if not self._thread.isAlive():
+            self.run()
+
+    def stop_sphere_apparition(self):
+        self.sphere_apparition_period = 0
 
     def _vrep_epuck_suffix(self, num):
         if num == 0:
@@ -101,7 +126,7 @@ class Simulator(Observable):
         n_objects = 0
         self.object_names = []
         last_sphere_t = self.io.get_simulation_current_time()
-        while self.t < seconds * 1000.:
+        while not seconds or self.t < seconds * 1000.:
             start_time = self.io.get_simulation_current_time()
 
             objects_to_remove = []
@@ -119,9 +144,10 @@ class Simulator(Observable):
                 self.object_names.remove(obj)
                 self.remove_object(obj)
 
-            if start_time > last_sphere_t + self.sphere_apparition_period:
+            if self.sphere_apparition_period and start_time > last_sphere_t + self.sphere_apparition_period:
                 name = "Sphere_" + str(n_objects + 1)
-                self.io.add_sphere(name, [-1., -1., 0.2], [0.1, 0.1, 0.1], 0.5)
+                pos = rand(3) * (self.sphere_max_pos - self.sphere_min_pos) + self.sphere_min_pos
+                self.io.add_sphere(name, pos, [0.1, 0.1, 0.1], 0.5)
                 self.object_names.append(name)
                 self.io._inject_lua_code("simSetObjectSpecialProperty({}, {})".format(self.io.get_object_handle(name), vrep.sim_objectspecialproperty_detectable_all))
                 n_objects += 1
