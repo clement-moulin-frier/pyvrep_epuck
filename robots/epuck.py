@@ -63,7 +63,7 @@ class Epuck(object):
 
         # vrep.simxGetFloatSignal(self._clientID, "CurrentTime", vrep.simx_opmode_streaming)
 
-        self.max_speed = 20.
+        self.max_speed = 10.
 
         self.freq = 100
         self._behaviors = {}
