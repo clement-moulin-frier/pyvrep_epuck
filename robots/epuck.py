@@ -12,8 +12,9 @@ from threading import Event, Condition
 from threading import Thread as ParralelClass
 # from multiprocessing import Process as ParralelClass
 
+from ..vrep.observer import Observer
 
-class Epuck(object):
+class Epuck(Observer):
     def __init__(self, pypot_io, freq = 10., use_proximeters=range(8), suffix=""):
         self.suffix = suffix
         self.io = pypot_io
@@ -65,6 +66,8 @@ class Epuck(object):
 
         self.max_speed = 10.
 
+        self.catch_sphere_times = []
+
         self.freq = 100
         self._behaviors = {}
         self._runnings = {}
@@ -84,6 +87,8 @@ class Epuck(object):
 
         self.behavior_mixer = BehaviorMixer(self)
         self.behavior_mixer.start()
+
+        Observer.__init__(self)
 
     def hide_ray(self, prox_id):
         self.io.call_remote_api("simxSetObjectIntParameter", self._all_prox_handles[prox_id], 4000, 1, sending=True)
@@ -355,6 +360,9 @@ class Epuck(object):
         self._sensations[callback.__name__] = Sensation(self, callback, Condition(), freq)
         self._sensations[callback.__name__].start()
 
+    def handle_notification(self, topic, message):
+        if topic[1]=="eat":
+            self.catch_sphere_times.append(message)
 
 class Sensation(ParralelClass):
 

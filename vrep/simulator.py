@@ -92,6 +92,8 @@ class Simulator(Observable):
         self.io.close()
 
     def start_sphere_apparition(self, period=5., min_pos=[-1., -1., .1], max_pos=[1., 1., 1.]):
+        for i_r, r in enumerate(self.robots):
+            self.subscribe(topic=(i_r, "eat"), subscriber=r)
         self.sphere_min_pos = array(min_pos)
         self.sphere_max_pos = array(max_pos)
         self.sphere_apparition_period = period
@@ -139,7 +141,7 @@ class Simulator(Observable):
                         break
                     if obj not in objects_to_remove and norm(robot_pos - obj_pos) < 0.1:
                         objects_to_remove.append(obj)
-                        self.emit((i_r, "eat"), True)
+                        self.emit((i_r, "eat"), self.io.get_simulation_current_time())
             for obj in objects_to_remove:
                 self.object_names.remove(obj)
                 self.remove_object(obj)
