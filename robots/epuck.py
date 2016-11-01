@@ -3,7 +3,7 @@ from __future__ import division
 from pypot.vrep.remoteApiBindings import vrep
 from pypot.vrep.io import VrepIOErrors
 from math import sqrt
-from numpy import average, mean, array, argmax, argmin, ones
+from numpy import average, mean, array, argmax, argmin, ones, zeros_like
 from numpy.random import rand, randint
 from random import sample, choice
 from time import sleep
@@ -15,7 +15,9 @@ from threading import Thread as ParralelClass
 from ..vrep.observer import Observer
 
 class Epuck(Observer):
-    def __init__(self, pypot_io, freq = 10., use_proximeters=range(8), suffix=""):
+    def __init__(self, pypot_io, simulator, freq = 10., use_proximeters=range(8), suffix=""):
+        
+        self.simulator = simulator
         self.suffix = suffix
         self.io = pypot_io
         self.used_proximeters = use_proximeters
@@ -206,13 +208,24 @@ class Epuck(Observer):
         #     return array(distances)[self._prox_aliases[group]]
         # else:
         #     return array(distances)[self._prox_aliases[group]], array(objects)[self._prox_aliases[group]]
-        return array(distances)
+        if mode == "no_object_id":
+            return array(distances)
+        else:
+            return array(distances), array(objects)
+        # return array(distances)
 
-    def prox_activations(self, tracked_objects=None):
-        # if tracked_objects == "all":
-        #     t_o = None
-        # elif tracked_objects == "sphere"
-        return (self.no_detection_value - self.proximeters(tracked_objects)) / self.no_detection_value
+    def prox_activations(self, tracked_objects=None, attribute=None, attribute_default_value=1.):
+        if attribute is not None and not any([to.startswith("ePuck") for to in tracked_objects]):
+            print "Warning: attribute argument can only be applied to a tracked ePuck"
+
+        distances, names = self.proximeters(tracked_objects=tracked_objects, mode="id")
+        if attribute is not None:
+            epuck = self.simulator.epuck_from_object_name(n)
+            values = array([getattr(epuck, attribute) if n.startswith("ePuck") else attribute_default_value for n in names])
+        else:
+            values = attribute_default_value * ones(len(distances))
+        return values * (self.no_detection_value - distances) / self.no_detection_value
+
 
     def position(self):
         return self.io.get_object_position("ePuck" + self.suffix)
