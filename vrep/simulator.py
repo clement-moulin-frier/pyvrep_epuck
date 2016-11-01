@@ -68,6 +68,8 @@ class Simulator(Observable):
 
         self.n_robots = 0
 
+        self.suffix_to_epuck = {}
+
         self._thread = threading.Thread(target=lambda: self._run(0))
         self._running = threading.Event()
         self._running.clear()
@@ -109,8 +111,20 @@ class Simulator(Observable):
         else:
             return "#" + str(num - 1)
 
+    def epuck_from_object_name(self, name):
+        if not name.startswith("ePuck"):
+            return None
+        elif "#" in name:
+            suffix = "#" + name.split("#")[1]
+        else:
+            suffix = ""
+        return self.suffix_to_epuck[suffix]
+
     def get_epuck(self, use_proximeters=range(8), verbose=False):
-        self.robots.append(Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + self.n_robots + 1), use_proximeters=use_proximeters, suffix=self._vrep_epuck_suffix(self.n_robots)))
+        suffix = self._vrep_epuck_suffix(self.n_robots)
+        epuck = Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + self.n_robots + 1), simulator=self, use_proximeters=use_proximeters, suffix=suffix)
+        self.suffix_to_epuck[suffix] = epuck
+        self.robots.append(epuck)
         self.n_robots += 1
         if verbose: print self.robots[-1]
         return self.robots[-1]
@@ -120,6 +134,7 @@ class Simulator(Observable):
 
     def remove_object(self, name):
         self.io.call_remote_api("simxRemoveObject", self.io.get_object_handle(name), sending=True)
+
 
     def _run(self, seconds):
 
