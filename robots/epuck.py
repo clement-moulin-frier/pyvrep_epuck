@@ -72,8 +72,7 @@ class Epuck(Observer):
 
         self.freq = 100
         self._behaviors = {}
-        self._runnings = {}
-        self._to_detach = {}
+        self._routines = {}
 
         self._sensations = {}
         self._conditions = {}
@@ -317,56 +316,112 @@ class Epuck(Observer):
         while self.io.get_simulation_current_time() - start < seconds:
             sleep(0.005)
 
-    def attach_behavior(self, callback, freq):
-        self._behaviors[callback] = Behavior(self, callback, self.condition, freq)
-        self._behaviors[callback].start()
+    def _attach(self, dictionary, class_to_create, callback, freq):
+        dictionary[callback] = class_to_create(self, callback, self.condition, freq)
+        dictionary[callback].start()
 
-    def detach_behavior(self, callback):
-        if callback not in self._behaviors:
+    def _detach(self, dictionary, callback):
+        if callback not in dictionary:
             print("Warning: " + callback.__name__ + " was not attached")
         else:
-            self._behaviors[callback].stop()  # just in case
-            self._behaviors[callback]._terminate()
-            sleep(self._behaviors[callback].period * 3)
-            del self._behaviors[callback]
+            dictionary[callback].stop()  # just in case
+            dictionary[callback]._terminate()
+            sleep(dictionary[callback].period * 3)
+            del dictionary[callback]        
+
+    def _detach_all(self, dictionary):
+        dict_copy = dict(dictionary)  # because one can't modify the dict during the loop on itself
+        for callback, item in dict_copy.iteritems():
+            self._detach(dictionary, callback)
+
+    def _start(self, dictionary, callback):
+        if callback not in dictionary:
+            print("Warning: " + callback.__name__ + " is not attached")
+            return False
+        else:
+            dictionary[callback].execute()
+            return True
+
+    def _start_all(self, dictionary):
+        for callback in dictionary:
+            self._start(dictionary, callback)       
+
+    def _stop(self, dictionary, callback):
+        if callback not in dictionary:
+            print("Warning: " + callback.__name__ + " is not attached")
+            return False
+        else:
+            dictionary[callback].stop()
+            return True
+
+    def _stop_all(self, dictionary):
+        for callback in dictionary:
+            self._stop(dictionary, callback)         
+
+    def _check(self, dictionary):
+        label = "Behavior" if dictionary == self._behaviors else "Routine"
+        if not len(dictionary):
+            print "No " + label+lower() + " attached"
+        for callback, obj in self._behaviors.iteritems():
+            print label + " \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if obj._running.is_set() else "NOT STARTED.")
+
+    def attach_behavior(self, callback, freq):
+        self._attach(self._behaviors, Behavior, callback, freq)
+        # self._behaviors[callback] = Behavior(self, callback, self.condition, freq)
+        # self._behaviors[callback].start()
+
+    def detach_behavior(self, callback):
+        self._detach(self._behaviors, callback)
+        print "Behavior " + callback.__name__ + " detached"
+
 
     def detach_all_behaviors(self):
-        beh_copy = dict(self._behaviors)  # because one can't modify the dict during the loop on itself
-        for callback, behavior in beh_copy.iteritems():
-            self.detach_behavior(callback)
-            print "Behavior " + callback.__name__ + " detached"
+        self._detach_all(self._behaviors)
+        # beh_copy = dict(self._behaviors)  # because one can't modify the dict during the loop on itself
+        # for callback, behavior in beh_copy.iteritems():
+        #     self.detach_behavior(callback)
+        #     print "Behavior " + callback.__name__ + " detached"
 
     def start_behavior(self, callback):
-        if callback not in self._behaviors:
-            print("Warning: " + callback.__name__ + " is not attached")
-        else:
-            self._behaviors[callback].execute()
+        # if callback not in self._behaviors:
+        #     print("Warning: " + callback.__name__ + " is not attached")
+        # else:
+        #     self._behaviors[callback].execute()
+            # if not self.behavior_mixer.is_executed():
+            #     self.behavior_mixer.execute()
+        if self._start(self._behaviors, callback):
             if not self.behavior_mixer.is_executed():
-                self.behavior_mixer.execute()
-
-    def start_all_behaviors(self):
-        for callback, behavior in self._behaviors.iteritems():
-            self.start_behavior(callback)
+                self.behavior_mixer.execute()   
             print "Behavior " + callback.__name__ + " started"
 
+    def start_all_behaviors(self):
+        for callback in self._behaviors:
+            self.start_behavior(callback)
+            print "Behavior " + callback.__name__ + " started"
+        # self._start_all(self._behaviors)
+
     def stop_behavior(self, callback):
-        if callback not in self._behaviors:
-            print("Warning: " + callback.__name__ + " is not attached")
-        else:
-            self._behaviors[callback].stop()
+        # if callback not in self._behaviors:
+        #     print("Warning: " + callback.__name__ + " is not attached")
+        # else:
+        #     self._behaviors[callback].stop()
+        #     if all([not b.is_executed() for b in self._behaviors.itervalues()]):
+        #         self.behavior_mixer.stop()
+        if self._stop(dictionary, callback):
             if all([not b.is_executed() for b in self._behaviors.itervalues()]):
                 self.behavior_mixer.stop()
 
     def stop_all_behaviors(self):
-        for b_name in self._behaviors:
-            self.stop_behavior(b_name)
+        # for b_name in self._behaviors:
+        #     self.stop_behavior(b_name)
+        self._stop_all(self._behaviors)
 
     def check_behaviors(self):
-        if not len(self._behaviors):
-            print "No behavior attached"
-        for callback, beh in self._behaviors.iteritems():
-            print "Behavior \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if beh._running.is_set() else "NOT STARTED.")
-
+        # if not len(self._behaviors):
+        #     print "No behavior attached"
+        # for callback, beh in self._behaviors.iteritems():
+        #     print "Behavior \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if beh._running.is_set() else "NOT STARTED.")
+        self._check(self._behaviors)
 
 
     def attach_sensation(self, callback, freq=None):
@@ -397,7 +452,8 @@ class Sensation(ParralelClass):
             self.condition.release()
             self.robot.wait(self.period)
 
-class Behavior(ParralelClass):
+
+class Routine(ParralelClass):
 
     def __init__(self, robot, callback, condition, freq):
         ParralelClass.__init__(self)
@@ -409,9 +465,6 @@ class Behavior(ParralelClass):
         self._running.clear()
         self._to_terminate = Event()
         self._to_terminate.clear()
-        self.left_wheel = 0.
-        self.right_wheel = 0.
-        self.activation = 0.
 
     def run(self):
         while True:
@@ -420,14 +473,12 @@ class Behavior(ParralelClass):
             start_time = self.robot.io.get_simulation_current_time()
             if self._running.is_set():
                 self.condition.acquire()
-                res = self.callback(self.robot)
-                if len(res) == 2:
-                    self.left_wheel, self.right_wheel = self.callback(self.robot)
-                    self.activation = 1.
-                else:
-                    self.left_wheel, self.right_wheel, self.activation = self.callback(self.robot)
+                self.loop_core()
                 self.condition.release()
             self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
+
+    def loop_core(self):
+        self.callback(self.robot)
 
     def execute(self):
         self._running.set()
@@ -442,6 +493,24 @@ class Behavior(ParralelClass):
 
     def _terminate(self):
         self._to_terminate.set()
+
+
+class Behavior(Routine):
+
+    def __init__(self, robot, callback, condition, freq):
+        Routine.__init__(self, robot, callback, condition, freq)
+        self.left_wheel = 0.
+        self.right_wheel = 0.
+        self.activation = 0.
+
+    def loop_core(self):
+        res = self.callback(self.robot)
+        if len(res) == 2:
+            self.left_wheel, self.right_wheel = res
+            self.activation = 1.
+        else:
+            self.left_wheel, self.right_wheel, self.activation = res     
+
 
 
 class BehaviorMixer(ParralelClass):
