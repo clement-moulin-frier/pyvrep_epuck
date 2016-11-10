@@ -2,6 +2,7 @@ from __future__ import division
 
 from pypot.vrep.remoteApiBindings import vrep
 from pypot.vrep.io import VrepIOErrors
+from ..routine import Routine
 from math import sqrt
 from numpy import average, mean, array, argmax, argmin, ones, zeros_like
 from numpy.random import rand, randint
@@ -9,10 +10,25 @@ from random import sample, choice
 from time import sleep
 from copy import copy
 from threading import Event, Condition
-from threading import Thread as ParralelClass
 # from multiprocessing import Process as ParralelClass
+from threading import Thread as ParralelClass
+
 
 from ..vrep.observer import Observer
+
+import re
+
+
+def last_digits(s):
+    return re.sub('.*?([0-9]*)$',r'\1',s)
+
+def is_object(name, vrep_name):
+    suffix = last_digits(name)
+    n = len(suffix)
+    prefix = name[:-n] if n else name
+    if prefix and prefix[-1] == "#":
+        prefix = prefix[:-1]
+    return vrep_name.startswith(prefix) and vrep_name.endswith(suffix)
 
 class Epuck(Observer):
     def __init__(self, pypot_io, simulator, freq = 10., use_proximeters=range(8), suffix=""):
@@ -88,6 +104,8 @@ class Epuck(Observer):
 
         self.behavior_mixer = BehaviorMixer(self)
         self.behavior_mixer.start()
+
+        self._has_eaten = False
 
         Observer.__init__(self)
 
@@ -192,7 +210,7 @@ class Epuck(Observer):
                 if detectionState:
                     if (detectedObjectHandle - 1) in self._registered_objects:
                         obj_name = self._registered_objects[detectedObjectHandle - 1]
-                        if tracked_objects is not None and not any([obj_name.startswith(o) for o in tracked_objects]):
+                        if tracked_objects is not None and not any([is_object(o, obj_name) for o in tracked_objects]):
                             objects.append("None")
                             distances.append(self.no_detection_value)
                             continue
@@ -213,17 +231,17 @@ class Epuck(Observer):
             return array(distances), array(objects)
         # return array(distances)
 
-    def prox_activations(self, tracked_objects=None, attribute=None, attribute_default_value=1.):
-        if attribute is not None and not any([to.startswith("ePuck") for to in tracked_objects]):
-            print "Warning: attribute argument can only be applied to a tracked ePuck"
+    def prox_activations(self, tracked_objects=None, return_epucks=False): #attribute=None, attribute_default_value=1.):
+        if return_epucks and not any([to.startswith("ePuck") for to in tracked_objects]):
+            print "Warning: return_epuck argument is set but no ePuck is tracked"
 
         distances, names = self.proximeters(tracked_objects=tracked_objects, mode="id")
-        if attribute is not None:
-            epuck = self.simulator.epuck_from_object_name(n)
-            values = array([getattr(epuck, attribute) if n.startswith("ePuck") else attribute_default_value for n in names])
+        activations = (self.no_detection_value - distances) / self.no_detection_value
+        if return_epucks:
+            epucks = [self.simulator.epuck_from_object_name(n) for n in names]
+            return activations, epucks
         else:
-            values = attribute_default_value * ones(len(distances))
-        return values * (self.no_detection_value - distances) / self.no_detection_value
+            return activations
 
 
     def position(self):
@@ -361,7 +379,7 @@ class Epuck(Observer):
     def _check(self, dictionary):
         label = "Behavior" if dictionary == self._behaviors else "Routine"
         if not len(dictionary):
-            print "No " + label+lower() + " attached"
+            print "No " + label.lower() + " attached"
         for callback, obj in self._behaviors.iteritems():
             print label + " \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if obj._running.is_set() else "NOT STARTED.")
 
@@ -397,7 +415,6 @@ class Epuck(Observer):
     def start_all_behaviors(self):
         for callback in self._behaviors:
             self.start_behavior(callback)
-            print "Behavior " + callback.__name__ + " started"
         # self._start_all(self._behaviors)
 
     def stop_behavior(self, callback):
@@ -407,14 +424,14 @@ class Epuck(Observer):
         #     self._behaviors[callback].stop()
         #     if all([not b.is_executed() for b in self._behaviors.itervalues()]):
         #         self.behavior_mixer.stop()
-        if self._stop(dictionary, callback):
+        if self._stop(self._behaviors, callback):
             if all([not b.is_executed() for b in self._behaviors.itervalues()]):
                 self.behavior_mixer.stop()
+            print "Behavior " + callback.__name__ + " stopped"
 
     def stop_all_behaviors(self):
-        # for b_name in self._behaviors:
-        #     self.stop_behavior(b_name)
-        self._stop_all(self._behaviors)
+        for b_name in self._behaviors:
+            self.stop_behavior(b_name)
 
     def check_behaviors(self):
         # if not len(self._behaviors):
@@ -423,14 +440,67 @@ class Epuck(Observer):
         #     print "Behavior \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if beh._running.is_set() else "NOT STARTED.")
         self._check(self._behaviors)
 
+    def attach_routine(self,callback, freq):
+        self._attach(self._routines, Routine, callback, freq)
+
+    def detach_routine(self, callback):
+        self._detach(self._routines, callback)
+        print "Routine " + callback.__name__ + " detached"
+
+
+    def detach_all_routines(self):
+        self._detach_all(self._routines)
+
+    def start_routine(self, callback):
+        if self._start(self._routines, callback):
+            print "Routine " + callback.__name__ + " started"
+
+    def start_all_routines(self):
+        for callback in self._routines:
+            self.start_routine(callback)
+
+    def stop_routine(self, callback):
+        if self._stop(dictionary, callback):
+            print "Routine " + callback.__name__ + " stopped"
+
+
+    def stop_all_routines(self):
+        for r_name in self._routines:
+            self.stop_routine(r_name)
+
+    def check_routines(self):
+        self._check(self._routines)
+
 
     def attach_sensation(self, callback, freq=None):
         self._sensations[callback.__name__] = Sensation(self, callback, Condition(), freq)
         self._sensations[callback.__name__].start()
 
+
+    def has_eaten(self):
+        
+        if self._has_eaten:
+            self._has_eaten = False
+            return True
+        return False
+
     def handle_notification(self, topic, message):
         if topic[1]=="eat":
+            self._has_eaten = True
             self.catch_sphere_times.append(message)
+
+    def freeze(self):
+        self.behavior_mixer.stop()
+        sleep(self.behavior_mixer.period * 3.)
+        self.stop()
+
+    def unfreeze(self):
+        self.behavior_mixer.execute()
+
+    def sensed_epuck_attributes(self, epuck_left, epuck_right, attribute, default_value):
+        value_left = getattr(epuck_left, attribute) if epuck_left is not None else default_value
+        value_right = getattr(epuck_right, attribute) if epuck_right is not None else default_value
+        return value_left, value_right
 
 class Sensation(ParralelClass):
 
@@ -453,52 +523,11 @@ class Sensation(ParralelClass):
             self.robot.wait(self.period)
 
 
-class Routine(ParralelClass):
-
-    def __init__(self, robot, callback, condition, freq):
-        ParralelClass.__init__(self)
-        self.period = 1. / freq
-        self.robot = robot
-        self.callback = callback
-        self.condition = condition
-        self._running = Event()
-        self._running.clear()
-        self._to_terminate = Event()
-        self._to_terminate.clear()
-
-    def run(self):
-        while True:
-            if self._to_terminate.is_set():
-                break
-            start_time = self.robot.io.get_simulation_current_time()
-            if self._running.is_set():
-                self.condition.acquire()
-                self.loop_core()
-                self.condition.release()
-            self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
-
-    def loop_core(self):
-        self.callback(self.robot)
-
-    def execute(self):
-        self._running.set()
-
-    def is_executed(self):
-        return self._running.is_set()
-
-    def stop(self):
-        self._running.clear()
-        sleep(self.period * 2)
-        self.activation, self.left_wheel, self.right_wheel = 0., 0., 0.
-
-    def _terminate(self):
-        self._to_terminate.set()
-
-
 class Behavior(Routine):
 
     def __init__(self, robot, callback, condition, freq):
         Routine.__init__(self, robot, callback, condition, freq)
+        self.robot = self.object_with_io
         self.left_wheel = 0.
         self.right_wheel = 0.
         self.activation = 0.
