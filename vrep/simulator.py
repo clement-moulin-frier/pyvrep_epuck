@@ -81,7 +81,9 @@ class Simulator(Observable):
         self._thread.start()
 
     def wait(self):
-        self._thread.join()
+        start = self.io.get_simulation_current_time()
+        while self.io.get_simulation_current_time() - start < seconds:
+            sleep(0.005)
 
     def stop(self):
         self._running.clear()
@@ -118,6 +120,7 @@ class Simulator(Observable):
             suffix = "#" + name.split("#")[1]
         else:
             suffix = ""
+        # print self.suffix_to_epuck, suffix
         return self.suffix_to_epuck[suffix]
 
     def get_epuck(self, use_proximeters=range(8), verbose=False):
