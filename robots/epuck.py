@@ -3,6 +3,8 @@ from __future__ import division
 from pypot.vrep.remoteApiBindings import vrep
 from pypot.vrep.io import VrepIOErrors
 from ..routine import Routine
+from ..logger import Logger
+
 from math import sqrt
 from numpy import average, mean, array, argmax, argmin, ones, zeros_like
 from numpy.random import rand, randint
@@ -31,13 +33,14 @@ def is_object(name, vrep_name):
     return vrep_name.startswith(prefix) and vrep_name.endswith(suffix)
 
 class Epuck(Observer):
-    def __init__(self, pypot_io, simulator, freq = 10., use_proximeters=range(8), suffix=""):
+    def __init__(self, pypot_io, simulator, robot_id, freq = 10., use_proximeters=range(8), suffix=""):
         
         self.simulator = simulator
         self.suffix = suffix
         self.io = pypot_io
         self.used_proximeters = use_proximeters
         self.freq = freq
+        self.robot_id = robot_id
 
         self._left_joint = self.io.get_object_handle('ePuck_leftJoint' + suffix)
         self._right_joint = self.io.get_object_handle('ePuck_rightJoint' + suffix)
@@ -106,6 +109,10 @@ class Epuck(Observer):
         self.behavior_mixer.start()
 
         self._has_eaten = False
+
+        simulator.subscribe(topic=(self.robot_id, "eat"), subscriber=self)  
+
+        self.logger = Logger()             
 
         Observer.__init__(self)
 
@@ -195,6 +202,7 @@ class Epuck(Observer):
 
     def close(self):
         self.detach_all_behaviors()
+        self.detach_all_routines()
         self.behavior_mixer._terminate()
         sleep(self.behavior_mixer.period)
         self.stop()
@@ -344,7 +352,7 @@ class Epuck(Observer):
         else:
             dictionary[callback].stop()  # just in case
             dictionary[callback]._terminate()
-            sleep(dictionary[callback].period * 3)
+            sleep(dictionary[callback].period)
             del dictionary[callback]        
 
     def _detach_all(self, dictionary):
@@ -380,7 +388,7 @@ class Epuck(Observer):
         label = "Behavior" if dictionary == self._behaviors else "Routine"
         if not len(dictionary):
             print "No " + label.lower() + " attached"
-        for callback, obj in self._behaviors.iteritems():
+        for callback, obj in dictionary.iteritems():
             print label + " \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if obj._running.is_set() else "NOT STARTED.")
 
     def attach_behavior(self, callback, freq):
@@ -460,7 +468,7 @@ class Epuck(Observer):
             self.start_routine(callback)
 
     def stop_routine(self, callback):
-        if self._stop(dictionary, callback):
+        if self._stop(self._routines, callback):
             print "Routine " + callback.__name__ + " stopped"
 
 
@@ -501,6 +509,15 @@ class Epuck(Observer):
         value_left = getattr(epuck_left, attribute) if epuck_left is not None else default_value
         value_right = getattr(epuck_right, attribute) if epuck_right is not None else default_value
         return value_left, value_right
+
+    def add_log(self, topic, data):
+        self.logger.add(topic, data)
+
+    def get_log(self, topic):
+        return self.logger.get_log(topic)
+
+    def clear_all_logs(self):
+        return self.logger.clear()
 
 class Sensation(ParralelClass):
 
@@ -553,7 +570,7 @@ class BehaviorMixer(ParralelClass):
         self._running.clear()
         self._to_terminate = Event()
         self._to_terminate.clear()
-        self.mode = "random"
+        self.mode = "average"
 
     def run(self):
         while True:
