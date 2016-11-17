@@ -15,6 +15,7 @@ from numpy import array
 from numpy.random import rand
 
 from ..routine import Routine, RoutineManager
+from ..logger import Logger
 from .observer import Observable
 
 
@@ -69,7 +70,7 @@ def sphere_apparition(simulator, min_pos, max_pos):
     for robot in simulator.robots:
         robot.register_object(name)
 
-def sphere_eating(simulator):
+def eating(simulator):
     if not hasattr(simulator, "eatable_objects"):
         simulator.eatable_objects = []  
         for i_r, r in enumerate(simulator.robots):
@@ -79,7 +80,7 @@ def sphere_eating(simulator):
         robot_pos = array(robot.position())
         for obj in simulator.eatable_objects:
             try:
-                obj_pos = array(simulator.object_position(obj))
+                obj_pos = array(simulator.get_object_position(obj))
             except VrepIOErrors:
                 break
             if obj not in objects_to_remove and norm(robot_pos - obj_pos) < 0.1:
@@ -97,7 +98,7 @@ class Simulator(Observable):
         self.robots = []
 
         self.vrep_mode = vrep_mode
-        
+
         self.n_robots = 0
 
         self.suffix_to_epuck = {}
@@ -105,6 +106,10 @@ class Simulator(Observable):
 
         self._condition = threading.Condition()
         self.routine_manager = RoutineManager()
+
+        self.eatable_objects = []
+
+        self.logger = Logger()
 
         Observable.__init__(self)
 
@@ -116,21 +121,37 @@ class Simulator(Observable):
 
     def close(self):
         self.detach_all_routines()
+        sleep(0.3)
         self.io.stop_simulation()
         self.io.close()
 
-    def object_position(self, object_name):
+    def get_object_position(self, object_name):
         return array(self.io.get_object_position(object_name))
+
+    def set_object_position(self, object_name, position):
+        return self.io.set_object_position(object_name, position)
+
+    def add_sphere(self, name, position, sizes=[0.1, 0.1, 0.1], mass=0.5, eatable=True):
+        self.io.add_sphere(name, position, sizes, mass)
+        if eatable:
+            self.eatable_objects.append(name)
+    
 
     def start_sphere_apparition(self, period=5., min_pos=[-1., -1., .1], max_pos=[1., 1., 1.]):
         self.attach_routine(sphere_apparition, freq=1./period, min_pos=min_pos, max_pos=max_pos)
-        self.attach_routine(sphere_eating, freq=4.)
+        self.attach_routine(eating, freq=4.)
         self.start_routine(sphere_apparition)
-        self.start_routine(sphere_eating)
+        self.start_routine(eating)
 
     def stop_sphere_apparition(self):
         self.stop_routine(sphere_apparition)
-        self.stop_routine(sphere_eating)
+        self.stop_routine(eating)
+
+    def add_log(self, topic, data):
+        self.logger.add(topic, data)
+
+    def get_log(self, topic):
+        return self.logger.get_log(topic)
 
     def _vrep_epuck_suffix(self, num):
         if num == 0:
@@ -149,7 +170,7 @@ class Simulator(Observable):
 
     def get_epuck(self, use_proximeters=range(8), verbose=False):
         suffix = self._vrep_epuck_suffix(self.n_robots)
-        epuck = Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + self.n_robots + 1), simulator=self, use_proximeters=use_proximeters, suffix=suffix)
+        epuck = Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + self.n_robots + 1), simulator=self, robot_id=self.n_robots, use_proximeters=use_proximeters, suffix=suffix)
         self.suffix_to_epuck[suffix] = epuck
         self.robots.append(epuck)
         self.n_robots += 1
