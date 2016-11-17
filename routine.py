@@ -20,7 +20,7 @@ class RoutineManager(object):
         else:
             self._routines[callback].stop()  # just in case
             self._routines[callback]._terminate()
-            sleep(self._routines[callback].period * 3)
+            sleep(self._routines[callback].period)
             del self._routines[callback]        
 
     def detach_all(self):
@@ -74,6 +74,7 @@ class Routine(ParralelClass):
         self._running.clear()
         self._to_terminate = Event()
         self._to_terminate.clear()
+        self.verbose = False
 
     def run(self):
         while True:
@@ -87,7 +88,7 @@ class Routine(ParralelClass):
             time_to_wait = self.period + start_time - self.object_with_io.io.get_simulation_current_time()
             if time_to_wait >= 0.:
                 self.object_with_io.wait(time_to_wait)
-            else:
+            elif self.verbose:
                 print "Too slow"
 
     def loop_core(self):
