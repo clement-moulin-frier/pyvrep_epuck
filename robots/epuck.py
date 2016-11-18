@@ -112,7 +112,9 @@ class Epuck(Observer):
 
         simulator.subscribe(topic=(self.robot_id, "eat"), subscriber=self)  
 
-        self.logger = Logger()             
+        self.logger = Logger()  
+
+        self.stop()           
 
         Observer.__init__(self)
 
