@@ -131,11 +131,15 @@ class Simulator(Observable):
     def set_object_position(self, object_name, position):
         return self.io.set_object_position(object_name, position)
 
-    def add_sphere(self, name, position, sizes=[0.1, 0.1, 0.1], mass=0.5, eatable=True):
+    def add_sphere(self, position, sizes=[0.1, 0.1, 0.1], mass=0.5, eatable=True):
+        name = "Sphere_" + str(len(self.eatable_objects) + 1)
         self.io.add_sphere(name, position, sizes, mass)
         if eatable:
             self.eatable_objects.append(name)
-    
+        self.io._inject_lua_code("simSetObjectSpecialProperty({}, {})".format(self.io.get_object_handle(name), vrep.sim_objectspecialproperty_detectable_all))
+        self.n_spheres = len(self.eatable_objects)
+        for robot in self.robots:
+            robot.register_object(name)    
 
     def start_sphere_apparition(self, period=5., min_pos=[-1., -1., .1], max_pos=[1., 1., 1.]):
         self.attach_routine(sphere_apparition, freq=1./period, min_pos=min_pos, max_pos=max_pos)
