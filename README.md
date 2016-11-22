@@ -4,7 +4,7 @@ This page describes how to set up and run a practical session. We assume that yo
 
 First, open the file manager by clicking on the icon that looks like a yellow folder in the menu vertical bar on the left of the desktop. Go in `Documents` and create a new folder called `rti2016` (right-click in the file manager window and choose `Carpeta nova`). This is in this folder that we will copy all the material necessary for the practical sessions. 
 
-Then, download the V-REP robot simulator [here](http://coppeliarobotics.com/V-REP_PRO_EDU_V3_3_2_64_Linux.tar.gz). Save it in the directory we just created, which is `Documents/rti2016`.
+Then, download the V-REP robot simulator [here](http://coppeliarobotics.com/files/V-REP_PRO_EDU_V3_3_2_64_Linux.tar.gz). Save it in the directory we just created, which is `Documents/rti2016`.
 
 Once the download is done, go to the `Documents/rti2016` directory in the file manager. Extract the archive by right-clicking on it and choosing `Extreu aquì`. You can delete the archive file (the one ending by `.tar.gz`), we'll not use it. 
 
