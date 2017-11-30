@@ -151,6 +151,9 @@ class Simulator(Observable):
         self.stop_routine(sphere_apparition)
         self.stop_routine(eating)
 
+    def stop_eating(self):
+        self.stop_routine(eating)
+
     def add_log(self, topic, data):
         self.logger.add(topic, data)
 
