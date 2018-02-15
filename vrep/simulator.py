@@ -45,6 +45,8 @@ def get_session(n_epucks=1, use_proximeters=[2, 3], old_simulator=None, old_epuc
         return [simulator] + epucks
 
 def close_session(simulator, *epucks):
+    if len(epucks) == 0:
+        epucks = simulator.robots
     simulator.close()
     for e in epucks:
         e.close()

@@ -2,6 +2,7 @@ import sys
 sys.path.append('../..')
 sys.path.append('../../pypot')
 sys.path.append('../../enum34')
+sys.path.append('../../pyserial-3.4')
 
 from functools import partial
 
