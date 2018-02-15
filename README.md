@@ -1,5 +1,8 @@
 # Practical sessions on mobile robot behavior programming
 
+[Download practical session material](https://www.dropbox.com/s/afbec7wc3wl04fw/sdic2018.tar.gz?dl=0)
+
+
 This page describes how to set up and run a practical session. We assume that your computer has been booted on the Linux Ubuntu operating system (available in the classroom). So if your are currently on Windows, you have to restart your machine to boot on Ubuntu instead.
 
 First, open the file manager by clicking on the icon that looks like a yellow folder in the menu vertical bar on the left of the desktop. Go in `Documents` and create a new folder called `rti2016` (right-click in the file manager window and choose `Carpeta nova`). This is in this folder that we will copy all the material necessary for the practical sessions. 
