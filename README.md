@@ -2,7 +2,7 @@
 
 This page describes how to set up and run a practical session. We assume that your computer has been booted on the Linux Ubuntu operating system (available in the classroom). So if your are currently on Windows, you have to restart your machine to boot on Ubuntu instead.
 
-- [Download practical session archive](https://www.dropbox.com/s/hfz9euxsyhcd3o1/sdic2018.tar.gz?dl=0) and save it in `Documents`.
+- [Download practical session archive](https://www.dropbox.com/s/f22gy95bqmqo0yp/sdic2018.tar.gz?dl=0) and save it in `Documents`.
 - Once the download is done, open the file manager by clicking on the icon that looks like a yellow folder in the menu vertical bar on the left of the desktop. Go in `Documents`and extract the archive (`Right click` -> `Extract here`). This will create a folder called `sdic2018`. You can then delete the archive file (`sdic2018.tar.gz`).
 - Open a terminal (the `>_` icon on the left pane of your desktop). Enter the two following commands to start the simulator (press `Enter` to execute):
 ```
