@@ -8,7 +8,7 @@ class Logger(object):
             self.logs[topic].append(data)
     def get_log(self, topic):
         if topic not in self.logs:
-            print "No data in " + topic
+            print("No data in " + topic)
             return []
         else:
             return self.logs[topic]

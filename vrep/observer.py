@@ -1,5 +1,5 @@
 from collections import defaultdict
-from Queue import Queue
+from queue import Queue
 
 
 
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     class EventManager(Observer):
         def handle_notification(self, topic, message):
-            print 'new event on topic "{}": "{}"'.format(topic, message)
+            print('new event on topic "{}": "{}"'.format(topic, message))
 
     object_tracker = ObjectTracker()
     event_manager = EventManager()

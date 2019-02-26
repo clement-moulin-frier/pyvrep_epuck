@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 from pypot.vrep.remoteApiBindings import vrep
 from pypot.vrep.io import VrepIOErrors
@@ -33,7 +33,7 @@ def is_object(name, vrep_name):
     return vrep_name.startswith(prefix) and vrep_name.endswith(suffix)
 
 class Epuck(Observer):
-    def __init__(self, pypot_io, simulator, robot_id, freq = 10., use_proximeters=range(8), suffix=""):
+    def __init__(self, pypot_io, simulator, robot_id, freq = 10., use_proximeters=list(range(8)), suffix=""):
         
         self.simulator = simulator
         self.suffix = suffix
@@ -69,8 +69,8 @@ class Epuck(Observer):
         self.wheel_diameter = 4.25 * 10 ** -2
         self.base_lenght = 7 * 10 ** -2
 
-        self._prox_aliases = {"all" : range(len(use_proximeters)),
-                              "all-but-rear" : range(6),
+        self._prox_aliases = {"all" : list(range(len(use_proximeters))),
+                              "all-but-rear" : list(range(6)),
                               "front" : [2, 3],
                               "rear" : [6, 7],
                               "front-left" : [0, 1, 2],
@@ -243,7 +243,7 @@ class Epuck(Observer):
 
     def prox_activations(self, tracked_objects=None, return_epucks=False): #attribute=None, attribute_default_value=1.):
         if return_epucks and not any([to.startswith("ePuck") for to in tracked_objects]):
-            print "Warning: return_epuck argument is set but no ePuck is tracked"
+            print("Warning: return_epuck argument is set but no ePuck is tracked")
 
         distances, names = self.proximeters(tracked_objects=tracked_objects, mode="id")
         activations = (self.no_detection_value - distances) / self.no_detection_value
@@ -309,7 +309,7 @@ class Epuck(Observer):
                 handle = self.io.get_object_handle(name)
                 passed = True
             except VrepIOErrors:
-                print "Not registered, retry ..."
+                print("Not registered, retry ...")
         self._registered_objects[handle] = name
 
     def register_all_scene_objects(self):
@@ -322,7 +322,7 @@ class Epuck(Observer):
         objs = array(["None"] * 8, dtype='|S400')
         dists[self._prox_aliases[group]], objs[self._prox_aliases[group]] = self.proximeters(group=group, mode="obj")
         min_dist = 1e10
-        for i, d, o in sample(zip(range(len(self.used_proximeters)), dists, objs), len(self.used_proximeters)):
+        for i, d, o in sample(list(zip(list(range(len(self.used_proximeters))), dists, objs)), len(self.used_proximeters)):
             if o.startswith(name) and d < min_dist:
                 min_dist = copy(d)
         if min_dist < 1e10:
@@ -334,7 +334,7 @@ class Epuck(Observer):
         dists = self.no_detection_value * ones(len(self.used_proximeters))
         objs = array(["None"] * 8, dtype='|S400')
         dists[self._prox_aliases[group]], objs[self._prox_aliases[group]] = self.proximeters(group=group, mode="obj")
-        for i, d, o in sample(zip(range(len(self.used_proximeters)), dists, objs), len(self.used_proximeters)):
+        for i, d, o in sample(list(zip(list(range(len(self.used_proximeters))), dists, objs)), len(self.used_proximeters)):
             if o.startswith(name) and d < dist:
                 return True
         return False
@@ -350,7 +350,7 @@ class Epuck(Observer):
 
     def _detach(self, dictionary, callback):
         if callback not in dictionary:
-            print("Warning: " + callback.__name__ + " was not attached")
+            print(("Warning: " + callback.__name__ + " was not attached"))
         else:
             dictionary[callback].stop()  # just in case
             dictionary[callback]._terminate()
@@ -359,12 +359,12 @@ class Epuck(Observer):
 
     def _detach_all(self, dictionary):
         dict_copy = dict(dictionary)  # because one can't modify the dict during the loop on itself
-        for callback, item in dict_copy.iteritems():
+        for callback, item in dict_copy.items():
             self._detach(dictionary, callback)
 
     def _start(self, dictionary, callback):
         if callback not in dictionary:
-            print("Warning: " + callback.__name__ + " is not attached")
+            print(("Warning: " + callback.__name__ + " is not attached"))
             return False
         else:
             dictionary[callback].execute()
@@ -376,7 +376,7 @@ class Epuck(Observer):
 
     def _stop(self, dictionary, callback):
         if callback not in dictionary:
-            print("Warning: " + callback.__name__ + " is not attached")
+            print(("Warning: " + callback.__name__ + " is not attached"))
             return False
         else:
             dictionary[callback].stop()
@@ -389,9 +389,9 @@ class Epuck(Observer):
     def _check(self, dictionary):
         label = "Behavior" if dictionary == self._behaviors else "Routine"
         if not len(dictionary):
-            print "No " + label.lower() + " attached"
-        for callback, obj in dictionary.iteritems():
-            print label + " \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if obj._running.is_set() else "NOT STARTED.")
+            print("No " + label.lower() + " attached")
+        for callback, obj in dictionary.items():
+            print(label + " \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if obj._running.is_set() else "NOT STARTED."))
 
     def attach_behavior(self, callback, freq):
         self._attach(self._behaviors, Behavior, callback, freq)
@@ -400,7 +400,7 @@ class Epuck(Observer):
 
     def detach_behavior(self, callback):
         self._detach(self._behaviors, callback)
-        print "Behavior " + callback.__name__ + " detached"
+        print("Behavior " + callback.__name__ + " detached")
 
 
     def detach_all_behaviors(self):
@@ -420,7 +420,7 @@ class Epuck(Observer):
         if self._start(self._behaviors, callback):
             if not self.behavior_mixer.is_executed():
                 self.behavior_mixer.execute()   
-            print "Behavior " + callback.__name__ + " started"
+            print("Behavior " + callback.__name__ + " started")
 
     def start_all_behaviors(self):
         for callback in self._behaviors:
@@ -435,9 +435,9 @@ class Epuck(Observer):
         #     if all([not b.is_executed() for b in self._behaviors.itervalues()]):
         #         self.behavior_mixer.stop()
         if self._stop(self._behaviors, callback):
-            if all([not b.is_executed() for b in self._behaviors.itervalues()]):
+            if all([not b.is_executed() for b in self._behaviors.values()]):
                 self.behavior_mixer.stop()
-            print "Behavior " + callback.__name__ + " stopped"
+            print("Behavior " + callback.__name__ + " stopped")
 
     def stop_all_behaviors(self):
         for b_name in self._behaviors:
@@ -455,7 +455,7 @@ class Epuck(Observer):
 
     def detach_routine(self, callback):
         self._detach(self._routines, callback)
-        print "Routine " + callback.__name__ + " detached"
+        print("Routine " + callback.__name__ + " detached")
 
 
     def detach_all_routines(self):
@@ -463,7 +463,7 @@ class Epuck(Observer):
 
     def start_routine(self, callback):
         if self._start(self._routines, callback):
-            print "Routine " + callback.__name__ + " started"
+            print("Routine " + callback.__name__ + " started")
 
     def start_all_routines(self):
         for callback in self._routines:
@@ -471,7 +471,7 @@ class Epuck(Observer):
 
     def stop_routine(self, callback):
         if self._stop(self._routines, callback):
-            print "Routine " + callback.__name__ + " stopped"
+            print("Routine " + callback.__name__ + " stopped")
 
 
     def stop_all_routines(self):
@@ -589,13 +589,13 @@ class BehaviorMixer(ParralelClass):
                     elif self.mode == "average":
                         activations = self._average()
                     else:
-                        print self.mode, "is not a valid mode. Choices are \"random\" or \"average\""
+                        print(self.mode, "is not a valid mode. Choices are \"random\" or \"average\"")
                 self.robot.left_wheel, self.robot.right_wheel = activations
                 self.condition.release()
             self.robot.wait(self.period + start_time - self.robot.io.get_simulation_current_time())
 
     def _average(self):
-        activations = array([(b.left_wheel, b.right_wheel, b.activation) for b in self.behaviors.itervalues()])
+        activations = array([(b.left_wheel, b.right_wheel, b.activation) for b in self.behaviors.values()])
         activations = average(activations[:, :2], weights=activations[:, 2] + 1e-10, axis=0)
         return activations
 

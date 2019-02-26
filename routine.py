@@ -16,7 +16,7 @@ class RoutineManager(object):
 
     def detach(self, callback):
         if callback not in self._routines:
-            print("Warning: " + callback.__name__ + " was not attached")
+            print(("Warning: " + callback.__name__ + " was not attached"))
         else:
             self._routines[callback].stop()  # just in case
             self._routines[callback]._terminate()
@@ -25,12 +25,12 @@ class RoutineManager(object):
 
     def detach_all(self):
         dict_copy = dict(self._routines)  # because one can't modify the dict during the loop on itself
-        for callback, item in dict_copy.iteritems():
+        for callback, item in dict_copy.items():
             self.detach(callback)
 
     def start(self, callback):
         if callback not in self._routines:
-            print("Warning: " + callback.__name__ + " is not attached")
+            print(("Warning: " + callback.__name__ + " is not attached"))
             return False
         else:
             self._routines[callback].execute()
@@ -42,7 +42,7 @@ class RoutineManager(object):
 
     def stop(self, callback):
         if callback not in self._routines:
-            print("Warning: " + callback.__name__ + " is not attached")
+            print(("Warning: " + callback.__name__ + " is not attached"))
             return False
         else:
             self._routines[callback].stop()
@@ -54,9 +54,9 @@ class RoutineManager(object):
 
     def check(self, label):
         if not len(self._routines):
-            print "No " + label.lower() + " attached"
-        for callback, obj in self._routines.iteritems():
-            print label + " \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if obj._running.is_set() else "NOT STARTED.")
+            print("No " + label.lower() + " attached")
+        for callback, obj in self._routines.items():
+            print(label + " \"{name}\" is attached and {started}".format(name=callback.__name__, started="STARTED" if obj._running.is_set() else "NOT STARTED."))
 
 
 
@@ -89,7 +89,7 @@ class Routine(ParralelClass):
             if time_to_wait >= 0.:
                 self.object_with_io.wait(time_to_wait)
             elif self.verbose:
-                print "Too slow"
+                print("Too slow")
 
     def loop_core(self):
         self.callback(self.object_with_io, **self.callback_kwargs)

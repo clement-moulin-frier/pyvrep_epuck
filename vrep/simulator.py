@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 from ..robots.epuck import Epuck
 
@@ -174,13 +174,13 @@ class Simulator(Observable):
             suffix = ""
         return self.suffix_to_epuck[suffix]
 
-    def get_epuck(self, use_proximeters=range(8), verbose=False):
+    def get_epuck(self, use_proximeters=list(range(8)), verbose=False):
         suffix = self._vrep_epuck_suffix(self.n_robots)
         epuck = Epuck(pypot_io=VrepIO(self.io.vrep_host, self.io.vrep_port + self.n_robots + 1), simulator=self, robot_id=self.n_robots, use_proximeters=use_proximeters, suffix=suffix)
         self.suffix_to_epuck[suffix] = epuck
         self.robots.append(epuck)
         self.n_robots += 1
-        if verbose: print self.robots[-1]
+        if verbose: print(self.robots[-1])
         return self.robots[-1]
 
     def get_epuck_list(self, n_epucks, verbose=False):
@@ -196,7 +196,7 @@ class Simulator(Observable):
 
     def detach_routine(self, callback):
         self.routine_manager.detach(callback)
-        print "Routine " + callback.__name__ + " detached"
+        print("Routine " + callback.__name__ + " detached")
 
 
     def detach_all_routines(self):
@@ -204,14 +204,14 @@ class Simulator(Observable):
 
     def start_routine(self, callback):
         if self.routine_manager.start(callback):
-            print "Routine " + callback.__name__ + " started"
+            print("Routine " + callback.__name__ + " started")
 
     def start_all_routines(self):
         self.routine_manager.start_all()
 
     def stop_routine(self, callback):
         if self.routine_manager.stop(callback):
-            print "Routine " + callback.__name__ + " stopped"
+            print("Routine " + callback.__name__ + " stopped")
 
     def stop_all_routines(self):
         self.routine_manager.stop_all()
