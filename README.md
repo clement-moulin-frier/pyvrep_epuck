@@ -2,7 +2,7 @@
 
 This page describes how to set up and run a practical session. We assume that your computer has been booted on the Linux Ubuntu operating system (available in the classroom). If your are currently on Windows, you have to restart your machine to boot on Ubuntu instead.
 
-- [Download the practical session archive](https://drive.google.com/file/d/1ctb9uypP5V4tUShthtldEHpRPkj5i5B0/view?usp=sharing) and save it in `Documents`.
+- [Download the practical session archive](https://drive.google.com/file/d/1MY065Lizh2bhlpvskY6_mE1pp0pz7g48/view?usp=sharing) and save it in `Documents`.
 - Once the download is completed, open the file manager by clicking on the icon that looks like a folder in the menu vertical bar on the left of the desktop. Go in `Documents` and extract the archive (`Right click` -> `Extract here`). This will create a folder called `sdic2019`. You can then delete the archive file (`sdic2019.zip`).
 - Download the [V-REP simulator](https://drive.google.com/file/d/1U_S2gFKWA0DkSAjmB65YWlM664h6C1hx/view?usp=sharing) (this is slightly modified version which allows to control multiple robots at the same time). and save it in `Documents/sdic2019`.
 - Once the download is completed, open the file manager, go in `Documents/sdic2019` and extract the archive called `V-REP_PRO_EDU_V3_6_0_Ubuntu18_04.zip`. You can then delete the archive file.
