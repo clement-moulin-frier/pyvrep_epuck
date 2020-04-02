@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+# Notebook
+notebooks/.ipynb_checkpoints/
+notebooks/.DS_Store
 
 # Distribution / packaging
 .Python
