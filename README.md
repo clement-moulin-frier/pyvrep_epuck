@@ -2,18 +2,15 @@
 
 This page describes how to set up and run a practical session. We assume that your computer has been booted on the Linux Ubuntu operating system (available in the classroom). If your are currently on Windows, you have to restart your machine to boot on Ubuntu instead.
 
-- [Download the practical session archive](https://drive.google.com/file/d/1UvSy_oyVHxMbSX-0uofcrnynYHCgtvCI/view?usp=sharing) and save it in `Documents`.
-- Once the download is completed, open the file manager by clicking on the icon that looks like a folder in the menu vertical bar on the left of the desktop. Go in `Documents` and extract the archive (`Right click` -> `Extract here`). This will create a folder called `sdic2019`. You can then delete the archive file (`sdic2019.zip`).
-- Download the [V-REP simulator](https://drive.google.com/file/d/1U_S2gFKWA0DkSAjmB65YWlM664h6C1hx/view?usp=sharing) (this is slightly modified version which allows to control multiple robots at the same time). and save it in `Documents/sdic2019`.
-- Once the download is completed, open the file manager, go in `Documents/sdic2019` and extract the archive called `V-REP_PRO_EDU_V3_6_0_Ubuntu18_04.zip`. You can then delete the archive file.
-- Open a terminal (the `$_` icon on the left pane of your desktop). Enter the two following commands to start the simulator (press `Enter` to execute):
+- [Download the practical session archive](https://drive.google.com/file/d/1UvSy_oyVHxMbSX-0uofcrnynYHCgtvCI/view?usp=sharing) and save it in `Documents` (if you prefer to use another folder, just replace `Document` by the path to your folder in the following).
+- Once the download is completed, open your file manager, go in `Documents` and extract the archive. This will create a folder called `robotics`. Inside this folder you should have two folders called `pyvrep-epuck` and `pypot`. You can then delete the archive file (`robotics.zip`).
+- Download the [CoppeliaSim simulator](https://www.coppeliarobotics.com/downloads) and install it.
+- In the directory where CoppeliaSim has been installed, replace the file `remoteApiConnections.txt` by [this one](https://drive.google.com/file/d/1DbIwm0k45pwPzxodMCoRc-AXrmhQAYwC/view?usp=sharing). This is required to be able to control multiple robots from a Jupyter notebook.
+    + If you are on MacOS, you will have to `ctrl-click` on the CoppeliaSim application and choose `Show package content`, then go to `Contents/MacOS` to replace the file. On MacOS you will also have to execute `sudo xattr -r -d com.apple.quarantine *` in a terminal from the `CoppeliaSim_Edu_V4_0_0_Mac`directory. 
+- Start the CoppeliaSim application. If asked, indicate that you accept incoming network connections (this is necessary for the connection with Jupyter Notebook). 
+- Once the simulator is open, launch `jupyter notebook` by opening another terminal and executing:
 ```
-cd Documents/sdic2019/V-REP_PRO_EDU_V3_6_0_Ubuntu18_04
-./vrep.sh
-```
-- Once the simulator is open, launch `jupyter notebook` by opening another terminal (middle-click on the `$_` icon) and executing:
-```
-cd Documents/sdic2019/pyvrep_epuck/notebooks/
+cd Documents/robotics/pyvrep_epuck/notebooks/
 jupyter notebook
 ```
 - This will open a web page in the browser with a list of files. Click on the practical session you want to do (`practical_session_1.ipynb` if it is the first class). This will open a document in a new tab in your browser.
