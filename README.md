@@ -1,6 +1,6 @@
 # Practical sessions on mobile robot behavior programming
 
-This page describes how to set up and run a practical session. We assume that your computer has been booted on the Linux Ubuntu operating system (available in the classroom). If your are currently on Windows, you have to restart your machine to boot on Ubuntu instead.
+This page describes how to set up and run the practical sessions. 
 
 - [Download the practical session archive](https://drive.google.com/file/d/1cB-UMEEbZM3w0oxo2hAfWmwE2y3jnVvn/view?usp=sharing) and save it in `Documents` (if you prefer to use another folder, just replace `Documents` by the path to your folder in the following).
 - Once the download is completed, open your file manager, go in `Documents` and extract the archive. This will create a folder called `robotics`. Inside this folder you should have two folders called `pyvrep-epuck` and `pypot` and a file `remoteApiConnections.txt`. You can then delete the archive file (`robotics.zip`).
