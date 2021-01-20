@@ -2,7 +2,7 @@
 
 This page describes how to set up and run the practical sessions. 
 
-- [Download the practical session archive](https://drive.google.com/file/d/1SrGDR-j8iqjIpUAqrrwns3srL6UjVzZr/view?usp=sharing) and save it in `Documents` (if you prefer to use another folder, just replace `Documents` by the path to your folder in the following).
+- [Download the practical session archive](https://drive.google.com/file/d/18JQClB_1gdKimCcvs_11YQKSJTf-J198/view?usp=sharing) and save it in `Documents` (if you prefer to use another folder, just replace `Documents` by the path to your folder in the following).
 - Once the download is completed, open your file manager, go in `Documents` and extract the archive. This will create a folder called `robotics`. Inside this folder you should have two folders called `pyvrep-epuck` and `pypot` and a file `remoteApiConnections.txt`. You can then delete the archive file (`robotics.zip`).
 - Download the [CoppeliaSim simulator](https://www.coppeliarobotics.com/downloads) and install it.
 - In the directory where CoppeliaSim has been installed, replace the file `remoteApiConnections.txt` by the one present in your `robotics` folder. This is required to be able to control multiple robots from a Jupyter notebook.
