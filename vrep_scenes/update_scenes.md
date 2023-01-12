@@ -19,7 +19,7 @@ I have worked on a fix for this issue. To solve it you need to follow the instru
 - Update the updated scene files
     - [Download the new scenes](https://drive.google.com/file/d/1sONUjYGHPVegi0j04fxvM8XONio2v-kN/view?usp=sharing) and unzip the downloaded zip file
     - Make sure your work on Session 1 is safe by copy pasting the file `epuck-scene-1.ttt` (in `robotics/pyvrep_epuck/vrep_scenes`) to another location
-    - Replace all the scene files in `robotics/pyvrep_epuck/vrep_scenes` by the files in the `updated_scenes unzipped folder
+    - Replace all the scene files in `robotics/pyvrep_epuck/vrep_scenes` by the files in the `updated_scenes` unzipped folder
 
 You can then continue working from Session 2 on these updated scenes. If you followed the instructions above correctly, you should see the following messages in the CoppeliaSim console (at the bottom of the app window) when you open a scene file:
 
