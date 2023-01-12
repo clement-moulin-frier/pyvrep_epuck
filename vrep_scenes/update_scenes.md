@@ -2,7 +2,7 @@ These instructions are only for the 2022-2023 UPF students having previously ins
 
 As we noticed during the first session on Monday, January 9, the connection between the Jupyter Notebook and the CoppeliaSim simulator was quite unstable. This is due to [important changes in the remote API provided by Coppelia](https://www.coppeliarobotics.com/helpFiles/index.html). This was leading to errors for many students, especially those using Windows.
 
-I have worked on a fix for this issue. To solve it you need to follow the instructions below (whatever OS you are using). If you have time you can do it before the second class today (Jan 12). If you think you need help for doing it, either ask another student who did it successfully, or ask me at the begining of the class today.
+I have worked on a fix for this issue. To solve it you need to follow the instructions below (whatever OS you are using). If you have time you can do it before the second class today (Jan 12). If you think you need help for doing it, either ask another student who did it successfully, or ask me at the beginning of the class today.
 
 - Uninstall  the previously installed `CoppeliaSim 4.4.0 Edu` version.
 - Install `CoppeliaSim 4.2.0 Edu`
