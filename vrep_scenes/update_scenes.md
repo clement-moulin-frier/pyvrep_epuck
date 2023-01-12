@@ -34,3 +34,23 @@ Init remote api connections
 20003,1
 Init done
 ```
+
+# How to avoid connection issues
+
+Whenever you want to restart the connection between the notebook and the simulator, follow these steps:
+
+First, close the current session:
+```
+close_session(simulator)
+```
+
+Then restart the notebook by selecting `Kernel -> Restart` in the menu bar (or the restart icon below the menu bar), and re-open the session by executing:
+
+```
+from simulator_interface import open_session, close_session
+simulator, epuck = open_session()
+```
+
+In case you still experience issues (which should normally not happen), restart both CoppeliaSim and Jupyter Notebook entirely. 
+
+As I explained in Class 1, you should never use the Play and Stop buttons (triangle and square icons) of the simulator. Instead use the notebook commands mentioned above. Only use the Play and Stop buttons of the simulator if these commands give errors.
