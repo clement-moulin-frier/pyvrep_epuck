@@ -12,7 +12,7 @@ This page describes how to set up and run the practical sessions.
         - On Windows
             - Go to `C:\Program Files\CoppeliaRobotics\CoppeliaSimEdu\system`
         - On Mac
-            - Right on `coppeliaSim` in the `Application` folder, then `Show Package content`. Then go to `Content/MacOS/system`.
+            - Right-click on `coppeliaSim` in the `Application` folder, then `Show Package content`. Then go to `Content/MacOS/system`.
         - Then, open the file `usrset.txt`
         - Add a line at the end of this file with `allowOldEduRelease=7775`
     - Then launch the CoppeliaSim application. It should now open normally.
