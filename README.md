@@ -8,14 +8,18 @@ This page describes how to set up and run the practical sessions.
 - Install `CoppeliaSim 4.2.0 Edu`
     - Download the `CoppeliaSim 4.2.0 Edu` version for your OS from https://www.coppeliarobotics.com/previousVersions
     - Install it
+        - On Linux you just need to extract the archive and execute `./coppeliaSim.sh` in a terminal
+        - On Windows and MacOS, do a normal install
     - Launch CoppeliaSim. The simulator will open and close just after. This is due to a previously [imposed limit on the runtime of Edu versions](https://forum.coppeliarobotics.com/viewtopic.php?f=9&t=9334). To allow this version to run you need to:
         - On Windows
             - Go to `C:\Program Files\CoppeliaRobotics\CoppeliaSimEdu\system`
         - On Mac
             - Right-click on `coppeliaSim` in the `Application` folder, then `Show Package content`. Then go to `Content/MacOS/system`.
+        - On Linux
+            - On Linux, go to the `system` folder in the extracted folder.
         - Then, open the file `usrset.txt`
         - Add a line at the end of this file with `allowOldEduRelease=7775`
-    - Then launch the CoppeliaSim application. It should now open normally.
+    - Then relaunch CoppeliaSim. It should now open normally.
 - If asked, indicate that you accept incoming network connections (this is necessary for the connection with Jupyter Notebook). 
 - Once the simulator is open, launch `jupyter notebook` by opening another terminal (on Windows: open Anaconda Prompt instead) and executing:
 ```
