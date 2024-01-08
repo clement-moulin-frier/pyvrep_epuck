@@ -2,7 +2,7 @@
 
 This page describes how to set up and run the practical sessions. 
 
-- [Download the practical session archive](https://drive.google.com/file/d/19KzgovlL5sW01uHtPJo5DowE2uwyY36B/view?usp=sharing) and save it in `Documents` (if you prefer to use another folder, just replace `Documents` by the path to your folder in the following).
+- [Download the practical session archive](https://drive.google.com/file/d/1gPVdtHJ2wpDviZiHR7Yx4efSs1kaRg3A/view?usp=sharing) and save it in `Documents` (if you prefer to use another folder, just replace `Documents` by the path to your folder in the following).
 - Once the download is completed, open your file manager, go in `Documents` and extract the archive. This will create a folder called `robotics`. Inside this folder you should have two folders called `pyvrep-epuck` and `pypot`. You can then delete the archive file (`robotics.zip`).
 - For MacOS and Windows: If Jupyter Notebook is not installed on your computer, [install Anaconda](https://www.anaconda.com/).
 - Install `CoppeliaSim 4.1.0 Edu`
