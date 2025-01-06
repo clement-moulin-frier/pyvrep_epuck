@@ -1,5 +1,7 @@
 # Practical sessions on mobile robot behavior programming
 
+**WARNING: This repository is no longer maintained. A new version of these practical sessions is now available, using a novel simulator called [The Vivarium](https://github.com/flowersteam/vivarium).**
+
 This page describes how to set up and run the practical sessions. 
 
 - [Download the practical session archive](https://drive.google.com/file/d/1gPVdtHJ2wpDviZiHR7Yx4efSs1kaRg3A/view?usp=sharing) and save it in `Documents` (if you prefer to use another folder, just replace `Documents` by the path to your folder in the following).
